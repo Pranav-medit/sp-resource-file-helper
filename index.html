@@ -6,7 +6,80 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Document</title>
 </head>
+<div class="container">
+  <h1 style="margin:auto;padding:20px;font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;" id="title">JSON to JHI Converter</h1>
+  <div class="button-holder">
+    <button id="paste">Paste</button>
+    <button id="pretty">Prettify</button>
+    <button id="convert">Convert</button>
+    <button id="copy">Copy</button>
+    
+      <label class="form-check-label check-label" >
+        <input type="checkbox" id="isFlatCheckbox" class="form-check-input" name="" id=""  checked>
+        <div id="check-label">
+          Flat
+        </div>
+      </label>
+  </div>
+  <div class="textAreaHOlder">
+    <textarea class="textarea" type="text" name="" id="" width="200px"></textarea>
+    <textarea class="textarea" type="text" name="" id="" ></textarea>
+  </div>
+</div>
 <body>
-  <script src="index.js"></script>
+  <style>
+    .container {
+      display:flex;
+      flex-direction: column;
+    }
+    .button-holder{
+      display: flex;
+      justify-content:center;
+      align-items: center;
+
+    }
+    input{
+      width: 20px;
+      height:20px;
+      line-height: 10px;
+    }
+    label{
+      line-height: 10px;
+    }
+    button{
+      margin:10px 20px 10px 20px ;
+      width: 100px;
+      height: 40px;
+      letter-spacing:1px;
+      color:white;
+      background-color:rgb(33, 159, 255);
+      border-radius:4px;
+    }
+    button:hover{
+      color:aqua;
+    }
+    button:active{
+      transform: scale(.96);
+    }
+    button:nth-child(3){
+      background-color:rgb(255, 0, 0); 
+    }
+    .textAreaHOlder{
+      justify-content: center;      
+      display:flex;
+      /* flex-grow: grow; */
+      /* width:100%; */
+    }
+    .textarea{
+    font-size: 16px;
+      margin:10px;
+      width:40%;
+      height: 600px;
+    }
+  </style>
+  <!-- <script src="jsonToJHIPSTERen.js"></script> -->
+  <script src="jsonApiToModel.js"></script>
+  <!-- <script src="apiToFrontCodeGen.js"></script> -->
+  <!-- <script src="index.js"></script> -->
 </body>
 </html>

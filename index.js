@@ -1,231 +1,158 @@
-const modelFileStr = `package com.sensei.encore.maininterface.controllers.customers.customer;
-
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.EnumSet;
-import java.util.List;
-import java.util.Locale;
-
-import javax.inject.Inject;
-import javax.servlet.http.HttpServletRequest;
-import javax.validation.Valid;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.context.MessageSource;
-import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.security.access.annotation.Secured;
-import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
-import org.springframework.validation.BindingResult;
-import org.springframework.validation.FieldError;
-import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-
-import com.sensei.encore.application.dto.CustomerAssociateDto;
-import com.sensei.encore.application.dto.CustomerDto;
-import com.sensei.encore.application.dto.EnumerationDto;
-import com.sensei.encore.application.dto.NameValueDto;
-import com.sensei.encore.application.facade.BankServiceFacade;
-import com.sensei.encore.application.facade.CustomerServiceFacade;
-import com.sensei.encore.application.facade.EnumerationServiceFacade;
-import com.sensei.encore.application.specifications.FindCustomerAssociateSpecification;
-import com.sensei.encore.basedomain.model.calendar.Calendar;
-import com.sensei.encore.basedomain.model.calendar.Tenure;
-import com.sensei.encore.basedomain.model.calendar.TimeUnit;
-import com.sensei.encore.basedomain.model.customer.CustomerAssociate.CustomerAssociateType;
-import com.sensei.encore.maininterface.controllers.support.ControllerExceptionHandler;
-import com.sensei.encore.maininterface.controllers.support.WebUtils;
-import com.sensei.encore.util.entity.PaginatedList;
-import com.sensei.encore.util.exception.ProgramException;
-
-@RequestMapping("/customers/customer/customerAssociate")
-@Controller
-public class CustomerAssociateController {
-	private static final Logger log = LoggerFactory.getLogger(CustomerAssociateController.class);
-	@Inject
-    private MessageSource messageSource;
-	@Inject
-	private CustomerServiceFacade customerService;
-	@Inject
-	private BankServiceFacade bankService;
-	@Inject
-	private EnumerationServiceFacade enumService;
-	@Inject
-	private ControllerExceptionHandler controllerExceptionHandler;
-	
-	@ModelAttribute("relation")
-	public List<EnumerationDto> populateRelation(Locale locale) {
-		EnumerationDto dto = new EnumerationDto();
-		dto.setCode("");
-		dto.setName(messageSource.getMessage("select_default_option", new String[0], locale));
-		List<EnumerationDto> list = new ArrayList<>();
-		list.add(dto);
-		list.addAll(enumService.findEnumerations("RelationshipWithCustomer"));
-		return list;
-	}
-
-    @ModelAttribute("associateTypes")
-    public List<NameValueDto> populateAssociateType(Locale locale) {
-    	List<NameValueDto> list= new ArrayList<>();
-    	list.add(new NameValueDto("", messageSource.getMessage("select_default_option", new String[0], locale)));
-        for(CustomerAssociateType aom : EnumSet.allOf(CustomerAssociateType.class)) {
-        	list.add(new NameValueDto(aom.name(), aom.displayName()));
-        }
-        return list;		
-    }
-   
-    @Secured("ROLE_CreateCustomerAssociate")
-    @RequestMapping(method = RequestMethod.POST, produces = "text/html")
-    public String create(@Valid CustomerAssociateDto customerAssociateDto, BindingResult bindingResult, Model uiModel, HttpServletRequest httpServletRequest, 
-    		Locale locale, RedirectAttributes redirectAttributes) throws Exception {
-    	try {
-    		String customerId = customerAssociateDto.getCustomerId();
-        	if (customerId != null && !customerId.isEmpty()) {
-        		CustomerDto customer = customerService.findCustomer(customerId);
-            	if(customer == null)
-            		bindingResult.addError(new FieldError("customerAssociateDto", "customerId", messageSource.getMessage("label_customerId_not_exit_message", new String []{customerId},locale)));
-        	}
-        	if (Calendar.after(customerAssociateDto.getEffectiveDate(), customerAssociateDto.getExpiryDate()) || Calendar.equals(customerAssociateDto.getEffectiveDate(), customerAssociateDto.getExpiryDate()))
-        		bindingResult.addError(new FieldError("customerAssociateDto", "customerAssociateDto.expiryDate", messageSource.getMessage("label_expirydate_error_message", new String []{""},locale)));
-    		if (bindingResult.hasErrors()) {    		
-                populateEditForm(uiModel, locale, customerAssociateDto);   
-                return  "redirect:/customers/customer/customerAssociate/create";
-            }
-	        customerService.saveCustomerAssociate(customerAssociateDto);
-	        redirectAttributes.addFlashAttribute(WebUtils.SUCCESS_MESSAGE, messageSource.getMessage("label_customer_associate_saved_successfully", new String[] 
-	        		{customerAssociateDto.getAssociateType().displayName(), customerAssociateDto.getCustomerId()}, locale));
-	        return "redirect:/customers/customer/customerAssociate/" + WebUtils.encodeUrlPathSegment(customerAssociateDto.getId() + "", httpServletRequest);
-        }
-        catch (ProgramException e) {
-    		controllerExceptionHandler.handleException("customerAssociateDto", e, Arrays.asList(new String []{"status"}), 
-    					uiModel, bindingResult, messageSource, locale);
-        	populateEditForm(uiModel, locale, customerAssociateDto);
-        	return "customers/customer/customerAssociate/create";
-    	}
-    }
-    @Secured("ROLE_UpdateCustomerAssociate")
-    @RequestMapping(method = RequestMethod.PUT, produces = "text/html")
-    public String update(@Valid CustomerAssociateDto customerAssociateDto, BindingResult bindingResult, Model uiModel, 
-    		HttpServletRequest httpServletRequest, Locale locale, RedirectAttributes redirectAttributes) throws Exception{
-    	try {
-    		if (Calendar.after(customerAssociateDto.getEffectiveDate(), customerAssociateDto.getExpiryDate()) || Calendar.equals(customerAssociateDto.getEffectiveDate(), customerAssociateDto.getExpiryDate()))
-        		bindingResult.addError(new FieldError("customerAssociateDto", "expiryDate", messageSource.getMessage("label_expirydate_error_message", new String []{""},locale)));
-    		if (bindingResult.hasErrors()) {    		
-                populateEditForm(uiModel, locale, customerAssociateDto);
-                return "customers/customer/customerAssociate/update";
-            }
-	        customerService.saveCustomerAssociate(customerAssociateDto);
-	        redirectAttributes.addFlashAttribute(WebUtils.SUCCESS_MESSAGE, messageSource.getMessage("label_customer_associate_updated_successfully", new String[] 
-	        		{customerAssociateDto.getAssociateType().displayName(), customerAssociateDto.getCustomerId()}, locale));
-	        return "redirect:/customers/customer/customerAssociate/" + WebUtils.encodeUrlPathSegment(customerAssociateDto.getId() + "", httpServletRequest);
-        }
-        catch (ProgramException e) {
-        	controllerExceptionHandler.handleException("customerAssociateDto", e, Arrays.asList(new String []{"associateType"}), 
-					uiModel, bindingResult, messageSource, locale);
-        	populateEditForm(uiModel, locale, customerAssociateDto);
-        	return "customers/customer/customerAssociate/update";
-    	}
-    }
-    @Secured("ROLE_CreateCustomerAssociate")
-    @RequestMapping(params = "form", produces = "text/html")
-    public String createForm(Model uiModel, Locale locale){
-    	LocalDate currentdate = bankService.findBank().getCurrentWorkingDate();
-    	CustomerAssociateDto customerAssociateDto = new CustomerAssociateDto();
-    	customerAssociateDto.setEffectiveDate(currentdate);
-    	customerAssociateDto.setExpiryDate(currentdate);
-        populateEditForm(uiModel, locale, customerAssociateDto);
-        return "customers/customer/customerAssociate/create";
-    }
-    @Secured("ROLE_CreateCustomerAssociate")
-    @RequestMapping(value="/createAssociate/{customerId}", produces = "text/html")
-    public String createPrecheckForm(@PathVariable("customerId") String customerId, Model uiModel, Locale locale){
-    	Calendar calendar = new Calendar();
-    	LocalDate currentdate = bankService.findBank().getCurrentWorkingDate();
-    	CustomerAssociateDto customerAssociateDto = new CustomerAssociateDto();
-    	customerAssociateDto.setCustomerId(customerId);
-    	customerAssociateDto.setEffectiveDate(calendar.moveByTenure(currentdate, new Tenure(-5, TimeUnit.YEAR)));
-    	customerAssociateDto.setExpiryDate(calendar.moveByTenure(currentdate, new Tenure(50, TimeUnit.YEAR)));
-        populateEditForm(uiModel, locale, customerAssociateDto);
-        return "customers/customer/customerAssociate/create";
-    }
-   
-    @Secured("ROLE_ShowCustomerAssociate")
-    @RequestMapping(value = "/{id}", produces = "text/html")
-    public String show(@PathVariable("id") Long id, Model uiModel) {    
-    	WebUtils.addDateTimeFormatPatterns(uiModel);
-    	CustomerAssociateDto customerAssociateDto = customerService.findCustomerAssociateById(id);
-        uiModel.addAttribute("customerAssociateDto", customerAssociateDto);
-        uiModel.addAttribute("itemId", id);
-        return "customers/customer/customerAssociate/show";
-    }
-    @Secured("ROLE_ListCustomerAssociates")
-    @RequestMapping(produces = "text/html")
-    public String list(@RequestParam(value = "customerId", required = false) String customerId, @RequestParam(value = "associateType", required = false) String associatetype, 
-    		@RequestParam(value = "name", required = false) String name, @RequestParam(value = "page", required = false) Integer page,
-    		@RequestParam(value = "size", required = false) Integer size, Model uiModel) {
-		
-        FindCustomerAssociateSpecification specification = new FindCustomerAssociateSpecification(customerId, associatetype, name);
-		uiModel.addAttribute("specification", specification);
-		Integer sizeNo = size == null ? 10 : size;
-		sizeNo = sizeNo > 25 ? 25 : sizeNo;
-        final Integer firstResult = page == null ? 0 : (page - 1) * sizeNo;
-
-        PaginatedList<CustomerAssociateDto> list = customerService.findCustomerAssociates(specification, firstResult, sizeNo);
-        uiModel.addAttribute("customerAssociates", list.getResults());
-		
-        float nrOfPages = (float) list.getTotalResults() / sizeNo;
-        uiModel.addAttribute("maxPages", (int) ((nrOfPages > (int) nrOfPages || nrOfPages == 0.0) ? nrOfPages + 1 : nrOfPages));
-        uiModel.addAttribute("customerId", customerId);
-        WebUtils.addDateTimeFormatPatterns(uiModel);
-        return "customers/customer/customerAssociate/list";
-    }
-    @Secured("ROLE_UpdateCustomerAssociate")
-    @RequestMapping(value = "/{id}", params = "form", produces = "text/html")
-    public String updateForm(@PathVariable("id") Long id, Model uiModel, Locale locale) {
-        CustomerAssociateDto customer = customerService.findCustomerAssociateById(id);
-        populateEditForm(uiModel, locale, customer);
-        return "customers/customer/customerAssociate/update";
-    }
-    @Secured("ROLE_DeleteCustomerAssociate")
-    @RequestMapping(value = "/{id}", method = RequestMethod.DELETE, produces = "text/html")
-    public String delete(@PathVariable("id") Long id, @RequestParam(value = "page", required = false) Integer page, @RequestParam(value = "size", required = false) Integer size,
-    		Model uiModel, Locale locale, RedirectAttributes redirectAttributes) {
-		
-        CustomerAssociateDto customerAssociateDto = customerService.findCustomerAssociateById(id);
-        try {
-	        customerService.removeCustomerAssociate(customerAssociateDto);
-	        uiModel.asMap().clear();
-	        uiModel.addAttribute("page", (page == null) ? "1" : page.toString());
-	        uiModel.addAttribute("size", (size == null) ? "10" : size.toString());
-	        redirectAttributes.addFlashAttribute(WebUtils.SUCCESS_MESSAGE, messageSource.getMessage("label_customer_deleted_successfully", new String[] 
-	        		{customerAssociateDto.getAssociateType().displayName(), customerAssociateDto.getCustomerId()}, locale));
-	        return "redirect:/customers/customer/customerAssociate";
-        } catch (DataIntegrityViolationException e) {
-        	redirectAttributes.addAttribute(WebUtils.APPLICATION_ERROR_CODE, messageSource.getMessage("label_customer_deleted_failure", new String[] 
-        			{customerAssociateDto.getAssociateType().displayName(), customerAssociateDto.getCustomerId()}, locale));
-        	populateEditForm(uiModel, locale, customerAssociateDto);
-        	return "redirect:/customers/customer/customerAssociate";
-		} catch (Exception e) {
-			redirectAttributes.addAttribute(WebUtils.APPLICATION_ERROR_CODE, e.getMessage());
-        	populateEditForm(uiModel, locale, customerAssociateDto);
-        	return "redirect:/customers/customer/customerAssociate";
+const modelFileStr = ` @ModelAttribute("associateTypes")
+public List<NameValueDto> populateAssociateType(Locale locale) {
+		List<NameValueDto> list= new ArrayList<>();
+		list.add(new NameValueDto("", messageSource.getMessage("select_default_option", new String[0], locale)));
+		for(LoanAssociateType aom : EnumSet.allOf(LoanAssociateType.class)) {
+				list.add(new NameValueDto(aom.name(), aom.displayName()));
 		}
-    }
-      
-    void populateEditForm(Model uiModel, Locale locale, CustomerAssociateDto customerAssociateDto) {
-        uiModel.addAttribute("customerAssociateDto", customerAssociateDto);
-        populateAssociateType(locale);
-        WebUtils.addDateTimeFormatPatterns(uiModel);
-    }
-    
-        
-}`
+		return list;        
+}@Secured("ROLE_ListLoanOdAssociates")
+@RequestMapping(value = "/listAssociates/{accountId}", produces = "text/html")
+public String listAssociates(@PathVariable("accountId") String accountId, Model uiModel, Locale locale, RedirectAttributes redirectAttributes) throws ProgramException {
+		List<LoanOdAssociateDto> associateDtos = loanOdService.findLoanOdAssociates(accountId);
+		uiModel.addAttribute("associateDtos", associateDtos);
+		uiModel.addAttribute("accountId", accountId);
+		WebUtils.addDateTimeFormatPatterns(uiModel);
+		return "loans/accounts/loanOd/loanOdAssociates/list";
+}
+@Secured("ROLE_CreateLoanOdAssociate")
+@RequestMapping(value = "/createAssociate/{accountId}", produces = "text/html")
+public String createLoanOdAssociate(@PathVariable("accountId") String accountId, Model uiModel, Locale locale, RedirectAttributes redirectAttributes) throws ProgramException {
+		LoanOdAssociateDto loanOdAssociateDto = new LoanOdAssociateDto();
+		loanOdAssociateDto.setAccountId(accountId);
+		uiModel.addAttribute("loanOdAssociateDto", loanOdAssociateDto);
+		WebUtils.addDateTimeFormatPatterns(uiModel);
+		return "loans/accounts/loanOd/loanOdAssociates/create";
+}
+
+@Secured("ROLE_CreateLoanOdAssociate")
+@RequestMapping(value = "/createAssociate", method = RequestMethod.POST, produces = "text/html")
+public String createLoanOdAssociate(@Valid LoanOdAssociateDto loanOdAssociateDto, BindingResult bindingResult, Model uiModel, Locale locale, 
+				HttpServletRequest httpServletRequest, RedirectAttributes redirectAttributes) throws ProgramException {
+		String associateId = loanOdAssociateDto.getAssociateId();
+		try{
+				if (loanOdAssociateDto.getAssociateType() == LoanAssociateType.GUARANTOR && associateId != null && !associateId.isEmpty()) {
+						CustomerDto customer = customerService.findCustomer(associateId);
+						if(customer == null)
+								bindingResult.addError(new FieldError("loanOdAssociateDto", "associateId", messageSource.getMessage("label_customerId_not_exit_message", new String []{associateId},locale)));
+				}
+				if (bindingResult.hasErrors()) {
+						uiModel.addAttribute("loanOdAssociateDto", loanOdAssociateDto);
+						return "loans/accounts/loanOd/loanOdAssociates/create";
+				}
+				uiModel.asMap().clear();
+				loanOdService.createLoanOdAssociate(loanOdAssociateDto);
+				redirectAttributes.addFlashAttribute(WebUtils.SUCCESS_MESSAGE, messageSource.getMessage("label_account_associate_saved_successfully", new String[] {loanOdAssociateDto.getAccountId()}, locale));
+				return "redirect:/loans/accounts/loanOd/loanOdAssociates/" + WebUtils.encodeUrlPathSegment("" + loanOdAssociateDto.getId(), httpServletRequest);
+		}
+		catch (ProgramException e){
+				redirectAttributes.addFlashAttribute(WebUtils.APPLICATION_ERROR_CODE, e.getMessage());
+				uiModel.addAttribute("loanOdAssociateDto", loanOdAssociateDto);
+				return "redirect:/loans/accounts/loanOd/loanOdAssociates";
+		}
+}
+@Secured("ROLE_ShowLoanOdAssociate")
+@RequestMapping(value = "/loanOdAssociates/{id}", produces = "text/html")
+public String showLoanOdAssociate(@PathVariable("id") Long id, Model uiModel) {
+		LoanOdAssociateDto loanOdAssociateDto = loanOdService.findLoanOdAssociateById(id);
+		uiModel.addAttribute("loanOdAssociateDto", loanOdAssociateDto);
+		uiModel.addAttribute("itemId", id);
+		uiModel.addAttribute("accountId", loanOdAssociateDto.getAccountId());
+		WebUtils.addDateTimeFormatPatterns(uiModel);
+		return "loans/accounts/loanOd/loanOdAssociates/show";            
+}
+@Secured("ROLE_DeleteLoanOdAssociate")
+@RequestMapping(value = "/loanOdAssociates/{id}", method = RequestMethod.DELETE, produces = "text/html")
+public String delete(@PathVariable("id") Long id, @RequestParam(value = "page", required = false) Integer page, @RequestParam(value = "size", required = false) Integer size, 
+				Model uiModel, HttpServletRequest httpServletRequest) throws ProgramException {
+		LoanOdAssociateDto associateDto = loanOdService.findLoanOdAssociateById(id);
+		loanOdService.removeLoanOdAssociate(associateDto);
+		uiModel.asMap().clear();
+		uiModel.addAttribute("page", (page == null) ? "1" : page.toString());
+		uiModel.addAttribute("size", (size == null) ? "10" : size.toString());
+		return "redirect:/loans/accounts/loanOd/listAssociates/" + WebUtils.encodeUrlPathSegment("" + associateDto.getAccountId(), httpServletRequest);
+}
+@Secured("ROLE_UpdateLoanOdAssociate")
+@RequestMapping(value = "/loanOdAssociates/{id}", params = "form", produces = "text/html")
+public String updateLoanOdAssociate(@PathVariable("id") Long id, Model uiModel) {
+		LoanOdAssociateDto loanOdAssociateDto = loanOdService.findLoanOdAssociateById(id);
+		uiModel.addAttribute("loanOdAssociateDto", loanOdAssociateDto);
+		WebUtils.addDateTimeFormatPatterns(uiModel);
+		return "loans/accounts/loanOd/loanOdAssociates/update";
+}
+
+@Secured("ROLE_UpdateLoanOdAssociate")
+@RequestMapping(value = "/loanOdAssociates", method = RequestMethod.PUT, produces = "text/html")
+public String updateLoanOdAssociate(@Valid LoanOdAssociateDto loanOdAssociateDto, BindingResult bindingResult, Model uiModel,
+				HttpServletRequest httpServletRequest, Locale locale, RedirectAttributes redirectAttributes) throws ProgramException{
+		String associateId = loanOdAssociateDto.getAssociateId();
+		try{    
+				if (loanOdAssociateDto.getAssociateType() == LoanAssociateType.GUARANTOR && associateId != null && !associateId.isEmpty()) {
+						CustomerDto customer = customerService.findCustomer(associateId);
+						if(customer == null)
+								bindingResult.addError(new FieldError("loanOdAssociateDto", "associateId", messageSource.getMessage("label_customerId_not_exit_message", new String []{associateId},locale)));
+				}
+				if (bindingResult.hasErrors()) {
+						populateAssociateType(locale);
+						uiModel.addAttribute("loanOdAssociateDto", loanOdAssociateDto);
+						return "loans/accounts/loanOd/loanOdAssociates/update";
+				}
+				uiModel.asMap().clear();
+				loanOdService.updateLoanOdAssociate(loanOdAssociateDto);
+				redirectAttributes.addFlashAttribute(WebUtils.SUCCESS_MESSAGE, messageSource.getMessage("label_account_associate_updated_successfully", new String[] {loanOdAssociateDto.getAccountId()}, locale));
+				return "redirect:/loans/accounts/loanOd/loanOdAssociates/" + WebUtils.encodeUrlPathSegment("" + loanOdAssociateDto.getId(), httpServletRequest);
+		}
+		catch (ProgramException e){
+				redirectAttributes.addFlashAttribute(WebUtils.APPLICATION_ERROR_CODE, e.getMessage());
+				uiModel.addAttribute("loanOdAssociateDto", loanOdAssociateDto);
+				return "redirect:/loans/accounts/loanOd/loanOdAssociates";
+		}
+}
+@Secured({"ROLE_UploadLoanAssociateXLS"})
+@RequestMapping(value = "uploadLoanAssociates", method = RequestMethod.POST, produces = "text/html")
+public String uploadLoanAssociateXls(@Valid FileDto fileData, BindingResult bindingResult, Model uiModel, HttpServletRequest request, Locale locale, 
+	RedirectAttributes redirectAttributes, HttpServletResponse response) {
+	uiModel.asMap().clear();
+	try {
+		MultipartFile file = fileData.getFileData();
+		if (file.getSize() == 0) {
+			redirectAttributes.addFlashAttribute(WebUtils.SUCCESS_MESSAGE, messageSource.getMessage("label_file_upload_error", new String[] {""}, locale));
+			return "redirect:/loans/accounts/loanOd?bulkActions";
+		}
+		String fileName = file.getOriginalFilename();
+		FileLocator fileLocator = new FileLocator();
+		if (!fileLocator.isValidExcelFile(fileName)) {
+			redirectAttributes.addFlashAttribute(WebUtils.SUCCESS_MESSAGE, messageSource.getMessage("label_file_name_error", new String[] {fileName}, locale));
+			return "redirect:/loans/accounts/loanOd?bulkActions";
+		}
+		List<LoanOdAssociateDto> loanOdAssociateDtos = loanOdAssociateAssembler.fromLoanAssociateXls(file.getInputStream());
+		for (LoanOdAssociateDto loanAssociateDto : loanOdAssociateDtos) {
+		try {
+			loanOdService.createLoanOdAssociate(loanAssociateDto);
+		} catch (Exception e) {
+			String errorMessage = ((loanAssociateDto.getAccountId() == null)?"":loanAssociateDto.getAccountId())+":"+e.getMessage();
+			loanAssociateDto.setAccountId("ERROR:"+errorMessage);
+		}
+		}
+		int mid = fileName.lastIndexOf(".");
+		fileName = fileName.substring(0,mid);
+	response.setContentType("application/vnd.ms-excel");
+		response.setHeader("Content-Disposition", "attachment;filename="+fileName+".xls");
+		loanOdAssociateAssembler.toLoanAssociateXls(response.getOutputStream(), loanOdAssociateDtos);
+return null;
+} catch (ProgramException e) {
+		logger.error("Error in loan associate upload", e);
+String errorMessage = e.getErrorCode();
+redirectAttributes.addFlashAttribute(WebUtils.SUCCESS_MESSAGE, messageSource.getMessage("label_account_associate_saved_error", new String[] {"'" +errorMessage+"'"}, locale));
+return "redirect:/loans/accounts/loanOd?bulkActions";
+} catch (Exception e) {
+		logger.error("Error in loan associate upload", e);
+String errorMessage = e.getMessage();
+redirectAttributes.addFlashAttribute(WebUtils.SUCCESS_MESSAGE, messageSource.getMessage("label_account_associate_saved_error", new String[] {"'" +errorMessage+"'"}, locale));
+return "redirect:/loans/accounts/loanOd?bulkActions";
+}
+}
+`
 function StepExtractor(text,step,isStr=true){
 	return isStr ? text.match(step).join(" ") : text.match(step);
 }
@@ -339,13 +266,19 @@ let importString = `
   import org.springframework.web.bind.annotation.RequestMapping;
   import org.springframework.web.bind.annotation.RequestMethod;
   import org.springframework.web.bind.annotation.RequestParam;
-  import org.springframework.web.bind.annotation.RestController;`
-  modifiedStr=addImport(importString,modifiedStr)
+  import org.springframework.web.bind.annotation.RestController;
+  import com.sensei.encore.maininterface.web.util.PaginationUtil;
+import org.springframework.http.HttpHeaders;
+  `
+// modifiedStr=addImport(importString,modifiedStr)
 // modifiedStr = insertTextToString(modifiedStr,getLastIndex(modelFileStr),importString)
 function removeMethod(str,name,repVal=""){
   // replaceStr(modifiedStr,new RegExp('\\\n.*?void.*?populateEditForm(.|\\\n\\\s)*'),"")
-  
-  return replaceStr(str,new RegExp('\\\n*?.*.+\\\s+'+name+'\\\s*\\((.|\\\n)*?\\).*?\\{([^{}]*|\\{([^{}]*|\\{([^{}]*|\\{([^{}]*|\\{([^{}]*|\\{([^{}]*|\\{[^{}]*\\})*\\})*\\})*\\})*\\})*\\})*\\}','i'),repVal)
+  console.log(str.match(new RegExp('\\\n*?.*.+\\\s+'+name+'\\\s*\\((.|\\\n)*?\\).*?\\{([^{}]*|\\{([^{}]*|\\{([^{}]*|\\{([^{}]*|\\{([^{}]*|\\{([^{}]*|\\{[^{}]*\\})*\\})*\\})*\\})*\\})*\\})*\\}')));
+  console.log(" See below ");
+  console.log(str.match(new RegExp('\\\n*?.*.+\\\s+create\\\s*\\((.|\\\n)*?\\).*?\\{([^{}]*|\\{([^{}]*|\\{([^{}]*|\\{([^{}]*|\\{([^{}]*|\\{([^{}]*|\\{[^{}]*\\})*\\})*\\})*\\})*\\})*\\})*\\}')));
+  console.log("See above\n\n")
+  return replaceStr(str,new RegExp('\\\n*?.*.+\\\s+'+name+'\\\s*\\((.|\\\n)*?\\).*?\\{([^{}]*|\\{([^{}]*|\\{([^{}]*|\\{([^{}]*|\\{([^{}]*|\\{([^{}]*|\\{[^{}]*\\})*\\})*\\})*\\})*\\})*\\})*\\}'),repVal)
 }
 function removeMethods(array,str) {
   array.forEach((methodName)=>{
@@ -353,7 +286,7 @@ function removeMethods(array,str) {
   })
   return str;
 }
-modifiedStr = removeMethods(['populateEditForm','editForm','updateForm','populateRelation','populateAssociateType'],modifiedStr);
+modifiedStr = removeMethods(['populateEditForm','editForm','updateForm','createForm'],modifiedStr);
 console.log(modifiedStr)
 // var position = 6;
 /* var output = [a.slice(0, position), b, a.slice(position)].join(''); */
