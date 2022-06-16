@@ -62,7 +62,7 @@ function convertObjectToJSClassModel(obj,modelName="Default"){
   }
   let currentModifier = accessModifiers.pu;
   let str=`export class ${modelName}{
-    constructor(
+  constructor(
   `
   let insideConstructorStr='';
   let totalVal =0;
