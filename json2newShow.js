@@ -164,7 +164,7 @@ const oHC  = new ObjectHelperClass();
 
 function wrapWithTag(value="",_class="",eAttr="",tag="div"){
   let nl ='\n'
-  if(eAttr === "" && _class==="") return `<${tag} class="${_class}" ${eAttr}>\n\t${value}\n</${tag}>`
+  if(eAttr === "" && _class!=="") return `<${tag} class="${_class}" ${eAttr}>\n\t${value}\n</${tag}>`
   return `<${tag} ${eAttr}>\n\t${value}\n</${tag}>`;
 }
 function genPageHeader(jhi) {
@@ -185,26 +185,106 @@ function genPageHeader(jhi) {
 console.log(
   genPageHeader(`jhiTranslate="encoreclientApp.associates.home.heading"`)
 );
+function indentAllLines(text,noOfIndentations=1){
+    return text.replaceAll(/^/gm,'\t'.repeat(noOfIndentations))
+}
 let formTag = htmlExtractTool.extractHtmlTag(compareHtml, "form", "searchForm");
 let divs = htmlExtractTool.extractAllTagWithAttr(formTag, "div", "col-2");
 let attrArr=[];
+let html = ``
 for (let div of divs) {
   let input = htmlExtractTool.extractHtmlTag(div, "(input)", "", true);
   let select = htmlExtractTool.extractHtmlTag(div,"select")
   if(!input && !select) continue;
-  else if(input)   handleInput(input,'i')
-  else if(select) handleInput(select,'s')
+  else if(input)  {
+     html+= handleInput(input,'i')
+  }
+  else if(select)   {
+     html+= handleInput(select,'s')
+  }
   else console.warn("something is different",input)
 }
+function genTheadRow(jhi){
+    let attrVal = htmlExtractTool.extractAttributeValue(jhi);
+    console.log(attrVal,jhi)
+    return indentAllLines(`<th ${jhi}>${oHC.getObjectValue(data,attrVal)}</th>\n`)
+}
+function genThRows(compareHtml){
+    let table = htmlExtractTool.extractHtmlTag(compareHtml, "table");
+    let thead = htmlExtractTool.extractHtmlTag(table, "thead");
+    let thRows = htmlExtractTool.extractAllTagWithAttr(thead, "th");
+    console.log(thRows)
+    let html =``
+    for(let thRow of thRows){
+        let jhi = htmlExtractTool.extractAttribute(thRow,'jhiTranslate');
+        if(jhi){
+            html+= genTheadRow(jhi);
+        }
+    }
+    html+=`\t<th>Actions</th>`
+    html = wrapWithTag(html,'','','tr')
+    html = wrapWithTag(html,'','','thead')
+    return html;
+}
+function genTbRows(compareHtml){
+    let table = htmlExtractTool.extractHtmlTag(compareHtml, "table");
+    let tbody = htmlExtractTool.extractHtmlTag(table, "tbody");
+    
+    let tr = htmlExtractTool.extractHtmlTag(tbody, "tr","\\\*ngFor=");
+    console.log(tr)
+    let tdRows = htmlExtractTool.extractAllTagWithAttr(tr, "td");
+    console.log(tdRows);
+    // console.log(thRows)
+    let html =``
+    for(let tdRow of tdRows){
+        console.log(tdRow)
+        let jhi = htmlExtractTool.extractAttribute(thRow,'jhiTranslate');
+        if(jhi){
+            html+= genTheadRow(jhi);
+        }
+    }
+    html+=`\t<th>Actions</th>`
+    html = wrapWithTag(html,'','','tr')
+    html = wrapWithTag(html,'','','tbody')
+    return html;
+}
+// console.log(genThRows(compareHtml))
+console.log(genTbRows(compareHtml))
+
+function generatePaginator() {
+    return `<div class="paginator-container" *ngIf="associates && associates.length">
+          <mat-paginator
+            [length]="totalItems"
+            [pageSize]="itemsPerPage"
+            [pageIndex]="page"
+            [pageSizeOptions]="[5, 10, 15, 25, 50]"
+            [showFirstLastButtons]="true"
+            (page)="loadPage($event)"
+          >
+          </mat-paginator>
+        </div>`
+}
+html = addSrchNClrButtons(html);
+html = indentAllLines(html);
+html = wrapWithTag(html,"flex w-1/2 gap-2")
+// console.log(htmlExtractTool.extractAttribute(compareHtml,'\\*ngIf','',true))
+// console.log(html);
+
 
 function handleInput(input,type) {
-    console.log(input)
     input = htmlExtractTool.removeAttribute(input,'class');
 
     input = htmlExtractTool.removeAttribute(input,'type');
     input = htmlExtractTool.addAttribute(input,'type="search"')
-    console.log(input)
+    input = wrapWithTag(input,"",`type="search" class="search-box"` )
+    return input+'\n';
 }
+function addSrchNClrButtons(value){
+    return html+`
+<button class="btn-dark-blue" (click)="search()">Search</button>\n
+<button class="link" (click)="clear()" *ngIf="currentSearch">Clear</button>\n`
+}
+ 
 function generateTabBody(tabStructureArr) {
   let tabHtml = ``;
   for (let [i, tabStructure] of tabStructureArr.entries()) {
@@ -229,6 +309,7 @@ function generateShowPageMainBody(htmlText) {
   }
   return showPageMainBodyHtml;
 }
+
 function generateEntireListPageHtml(htmlText) {
   let html = ``;
   return html;

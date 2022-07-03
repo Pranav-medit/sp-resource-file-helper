@@ -26,7 +26,8 @@ class ObjectHelperClass{
 
 class HtmlTool{
   any = `[.\\n\\S\\s]*?`
-  nSpace = `[\\s\\n]*`
+  nSpace = `[\\s\\n]*?`
+  closeTag=`[>\\n\\s\\t]+?`
   cacheStr = ""
   isPresent(string,reg){
     return string.match(new RegExp(reg)) ? true : false; 
@@ -62,8 +63,8 @@ class HtmlTool{
     attr = attr.replace(/\s/g,'')
     return this.matchWithErrorHandle(attr,`(?<=")${this.any}(?=")`);
   }
-  extractAttribute(html,name,value=''){
-    const attrRegex = this.getAttrRegex(name,value);
+  extractAttribute(html,name,value='',last=false){
+    const attrRegex = this.getAttrRegex(name,value,last);
       return this.matchWithErrorHandle(html,attrRegex);
   }
   extractAllTagWithAttr(html,tag,attr){
@@ -76,11 +77,16 @@ class HtmlTool{
     return tagArray;
   }
   getTagRegexp(tag,attr="",noCloseTag=false) { 
-    if(noCloseTag) return `<${tag}${this.any}${attr}${this.any}>`
-    return `<${tag}${this.any}${attr}${this.any}>${this.any}</${tag}>`
+    if(noCloseTag) return `<${tag+this.closeTag+this.any}${attr}${this.any}>`
+    return `<${tag+this.closeTag+this.any}${attr}${this.any}</${tag}>`
   }
-  getAttrRegex(name,value=''){
-    return `${name+this.nSpace}=${this.nSpace}"${this.any+value+this.any}"`
+  getAttrRegex(name,value='',last=false){
+    let regex = `${name+this.nSpace}=${this.nSpace}"${this.any+value+this.any}"`
+    if(last){
+      console.log(`(${regex})(?![.\S\s\n]*${regex})`)
+      return `${regex}(?![.\S\n]*${name})`
+    }
+    return regex
   }
   getReplaceAttrRegex(attrName){
     return `${attrName+this.nSpace+'='+this.nSpace+'"'+this.any+'"'}`
