@@ -1,3 +1,16 @@
+let data;
+$.ajax({
+  url: './en.json',
+  async:false,
+  success:function(res){
+      data = res;
+      
+  },
+  error:function(){
+      alert('An error was encountered.');
+  }
+});
+// const {encoreclientApp} = data;
 let compareHtml =`<div class="card-body">
 <jhi-alert></jhi-alert>
 <div class="row">
@@ -207,6 +220,89 @@ function extractNgTabTitle(str){
     let a =str.match(new RegExp('(?<=<ngb-tab[\\s.\\n\\S]*?title\\s*?=\\s*?)".*?"'))
   return str.match(new RegExp('(?<=<ngb-tab[\\s.\\n\\S]*?title\\s*?=\\s*?)".*?"'))[0].slice(1,-1)
 }
+class HtmlExtractTool{
+  any = `[.\\n\\S\\s]*?`
+  nSpace = `[\\s\\n]*`
+  cacheStr = ""
+  matchWithErrorHandle(str,regStr){
+    try{
+      let res = str.match(new RegExp(regStr))[0]
+      cacheStr = res;
+      return res
+    }catch(e){
+      console.warn(e);
+    }
+  }
+  extractHtmlTag(str,tag,attr="",noCloseTag=false){
+    let tagRegexp = getTagRegexp(tag,attr,noCloseTag);
+    this.matchWithErrorHandle(str,tagRegexp);
+  }
+  extractAttributeValue(attr){
+    if(attr==null) {console.warn("Undefined attribute value");return;}
+    attr = attr.replace(/\s/g,'')
+    return this.matchWithErrorHandle(attr,`(?<=")${this.any}(?=")`);
+  }
+  getTagRegexp(tag,attr="",noCloseTag=false) { 
+    if(noCloseTag){
+      if(attr!=="" && attr!=null){ 
+        return `<${tag}${this.any}${attr}${this.any}>`
+      }
+      return `<${tag}${this.any}>`
+    }
+    if(attr!=="" && attr!=null){ 
+      return `<${tag}${this.any}${attr}${this.any}>${this.any}</${tag}>`
+    }
+    return `<${tag}${this.any}>${this.any}</${tag}>`
+  }
+  getAttrRegex(name,value=false){
+    if(value){
+      return `${name+this.nSpace}=${this.nSpace}"${this.any+value+this.any}"`
+    }
+    return `${name+this.nSpace}=${this.nSpace}"${this.any}"`
+  }
+}
+
+
+function extractHtmlTag(str,tag,attr="",noCloseTag=false){
+  try{
+    return str.match(new RegExp(getTagRegexp(tag,attr,noCloseTag)))[0];
+  }catch(e){
+    console.warn("Tag not found.",e)
+  }
+}
+const any = `[.\\n\\S\\s]*?`
+function getTagRegexp(tag,attr="",noCloseTag=false) { 
+  if(noCloseTag){
+    if(attr!=="" && attr!=null){ 
+      return `<${tag}${any}${attr}${any}>`
+    }
+    return `<${tag}${any}>`
+  }
+  if(attr!=="" && attr!=null){ 
+    return `<${tag}${any}${attr}${any}>${any}</${tag}>`
+  }
+  return `<${tag}${any}>${any}</${tag}>`
+}
+function extractAttributeValue(attr){
+  if(attr==null) {console.warn("Undefined attribute value");return;}
+  attr = attr.replace(/\s/g,'')
+  return attr.match(new RegExp(`(?<=")${any}(?=")`))[0];
+}
+function extractAttribute(html,name,value=false){
+  try{
+    return html.match(new RegExp(getAttrRegex(name,value)))[0];
+  }catch(e){
+    console.warn("Attribute not found.",e)
+  }
+}
+function getAttrRegex(name,value=false){
+  let any = `[.\\n\\S\\s]*?`
+  let nSpace = `[\\s\\n]*`
+  if(value){
+    return `${name+nSpace}=${nSpace}"${any+value+any}"`
+  }
+  return `${name+nSpace}=${nSpace}"${any}"`
+}
 function extractNgIf(str){
     return str.match(new RegExp('\\*ngIf=".*?"'))[0];
 }
@@ -216,6 +312,14 @@ function extractDto(str,isInnerStr = false){
         return str.trim().split('.').slice(0,-1).join('.').trim()
     }
     return extractJhiTranslate(str).trim().split('.').slice(0,-1).join('.').trim();
+}
+function extractDtoNBase(str,isInnerStr = false){
+  // retruns "a.b.c" [ "a.b", "c" ]
+    console.log(str)
+    if(isInnerStr){
+        return [str.trim().split('.').slice(0,-1).join('.').trim(),str.trim().split('.').splice(-1).join('.')]
+    }
+    return [extractJhiTranslate(str).trim().split('.').slice(0,-1).join('.').trim(),extractJhiTranslate(str).trim().split('.').splice(-1).join('.')];
 }
 function createTrStructureObj(trArray){
     let trObjArr =  [];
@@ -289,9 +393,64 @@ function generateTrs(tabStructure){
     }
     return tabHtml;
 }
+// function captureSearchForm(html){
+//     html.
+// }
+function getObjectValue(obj,key){
+  let arr = key.split('.');
+  let maxIterations = 100; 
+  let iterations = 0;
+  let res=obj;
+  while((arr.length!==0) && (iterations<maxIterations)){ 
+    iterations++;
+    res = res[arr[0]];
+    arr.shift(); 
+  }
+  return res;
+}
 function wrapDataWithDiv(value){
     return `<div class="w-full">${value}</div>`
 }
+function genPageHeader(jhi){
+  let exJhi = extractJhiTranslate(jhi);
+  return `<div ${jhi} class="page-head">
+      ${getObjectValue(data,exJhi)}
+  </div>`
+}
+function wrapWithPageBody(value){
+  return `<div class="page-body">${value}</div>`
+}
+function generateSearchForm(){
+  return  `<div class="flex w-1/2 gap-2">`
+  `</div>`
+}
+
+function getAllTagWithAttr(html,tag,attr){
+  let match;
+  // let [match,replacedStr]  = matchNReplace(inputStr,'<ngb-tab[\\s>]+?[\\S\\s\\n.]*?</ngb-tab>')
+  let tagArray = []
+  while(isPresent(html,getTagRegexp(tag,attr))){
+    [ match,html ] = matchNReplace(html,getTagRegexp(tag,attr)) 
+    tagArray.push(match);    
+  }
+  return tagArray;
+}
+let formTag = extractHtmlTag(compareHtml,'form',"searchForm");
+console.log(formTag);
+let divs  = getAllTagWithAttr(formTag,'div','col-2')
+console.log(divs)
+for(let div of divs){
+  // console.log(div)
+  let input = extractHtmlTag(div,'(input|select)','',true);
+  console.log(input)
+  console.log(extractAttribute(input,'type'))
+}
+// function genPageBody()
+//let str  = 'encoreclientApp.associates.home.heading'
+// let arr = str.split('.').map((a)=>[a])
+// let i = 0; while(arr.length!==0){ res = arr[i];arr.shift() }
+// console.log(encoreclientApp)
+console.log(genPageHeader(`jhiTranslate="encoreclientApp.associates.home.heading"`))
 function generateTabBody(tabStructureArr){
   let tabHtml = ``;
   for(let [i, tabStructure] of tabStructureArr.entries()){

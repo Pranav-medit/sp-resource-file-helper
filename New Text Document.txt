@@ -19,10 +19,10 @@
                       </option>
                   </select>
             </div>
-            <div class="search-box">
-                <input type="search"  name="associateName" id="currentSearch.associateName"
-                    placeholder="Associate Name" [(ngModel)]="currentSearch.name">
-            </div>
+          <div class="search-box">
+              <input type="search"  name="associateName" id="currentSearch.associateName"
+                  placeholder="Associate Name" [(ngModel)]="currentSearch.name">
+          </div>
           <button class="btn-dark-blue" (click)="search()">Search</button>
           <button class="link" (click)="clear()" *ngIf="currentSearch">Clear</button>
         </div>
