@@ -1,17 +1,15 @@
 let data;
 $.ajax({
-  url: './en.json',
-  async:false,
-  success:function(res){
-      data = res;
-      
+  url: "./en.json",
+  async: false,
+  success: function (res) {
+    data = res;
   },
-  error:function(){
-      alert('An error was encountered.');
-  }
+  error: function () {
+    alert("An error was encountered.");
+  },
 });
-// const {encoreclientApp} = data;
-let compareHtml =`<div class="card-body">
+let compareHtml = `<div class="card-body">
 <jhi-alert></jhi-alert>
 <div class="row">
     <div class="col-8">
@@ -47,6 +45,10 @@ let compareHtml =`<div class="card-body">
                     <input type="text" class="form-control h-100" name="associateName" id="currentSearch.associateName"
                         placeholder="Associate Name" [(ngModel)]="currentSearch.name">
                 </div>
+                <div class="col-2">
+                <input type="text" class="form-control h-100" name="associateName" id="currentSearch.associateName"
+                    placeholder="Associate Name" formControlName="currentSearch.name">
+            </div>
                 <div class="col-2">
                     <button class="btn btn-info" (click)="search()">
                         <span class="fa fa-search"></span>
@@ -153,391 +155,127 @@ let compareHtml =`<div class="card-body">
             </div>
         </div>
     </div>
-</div>`
-function wrapWithHeaderHtml(html,dto,page=false,baseJhi=false) {
-    if(!baseJhi){
-        baseJhi = extractDto(html)
-    }
-    if(!page){
-        page = seperateCharectersUponUppercase(dto,true) 
-    }
-  return `
-  <div class="bg-white shadow-sm rounded h-full relative" >\n
-  <!--Head-->\n
-  <div class="flex gap-3 items-center p-3">
-    <div class="modal-title" jhiTranslate="${baseJhi}.detail.title">${page} Details</div>
-    <button class="btn-dark-blue ml-auto" jhiTranslate="entity.action.edit">Edit ${page}</button>
-    <button class="btn-icon-blue" (click)="previousState()">
-      <span class="material-icons">close</span>
-    </button>
-  </div>
-  
-  <jhi-alert></jhi-alert>
-    `+html+'\n</div>';
-}
+</div>`;
+
+let htmlExtractTool = new HtmlTool();
+let sH = new StringHelper();
+const oHC  = new ObjectHelperClass();
 
 
-function isPresent(string,reg){
-  return string.match(new RegExp(reg)) ? true : false; 
+function wrapWithTag(value="",_class="",eAttr="",tag="div"){
+  let nl ='\n'
+  if(eAttr === "" && _class==="") return `<${tag} class="${_class}" ${eAttr}>\n\t${value}\n</${tag}>`
+  return `<${tag} ${eAttr}>\n\t${value}\n</${tag}>`;
 }
-let isTabPresent = false;
-function setIsTabPresent(){
-  if(isPresent(inputStr,"ngb-tab")){ 
-    isTabPresent = true;
-  } 
-}
-function matchNReplace(inputStr,regexp){
-  let match,replacedStr;
-  match=inputStr.match(new RegExp(regexp))
-  replacedStr = inputStr.replace(match,'');
-  return [match[0],replacedStr];
-}
-function getAllTabs(inputStr){
-  let match;
-  // let [match,replacedStr]  = matchNReplace(inputStr,'<ngb-tab[\\s>]+?[\\S\\s\\n.]*?</ngb-tab>')
-  let tabArray = []
-  while(isPresent(inputStr,'<ngb-tab[\\s>]+?')){
-    [ match,inputStr ] = matchNReplace(inputStr,'<ngb-tab[\\s>]+?[\\S\\s\\n.]*?</ngb-tab>') 
-    tabArray.push(match);    
-  }
-  return tabArray;
-}
-function getAllTr(inputStr){
-  let trArray = []
-  while(isPresent(inputStr,'<tr[\\s>]+?')){
-    [ match,inputStr ] = matchNReplace(inputStr,'<tr[\\s>]+?[\\S\\s\\n.]*?</tr>') 
-    trArray.push(match);    
-  }
-  return trArray;
-}
-function extractJhiTranslate(str){
-  return str.match(new RegExp(`(?<=jhiTranslate\\s*?=\\s*?)".*?"`))[0].slice(1,-1)
-}
-function extractNgSubValue(str){
-  return str.match(new RegExp(`(?<={{).*?(?=}})`))[0];
-}
-function extractNgTabTitle(str){
-    let a =str.match(new RegExp('(?<=<ngb-tab[\\s.\\n\\S]*?title\\s*?=\\s*?)".*?"'))
-  return str.match(new RegExp('(?<=<ngb-tab[\\s.\\n\\S]*?title\\s*?=\\s*?)".*?"'))[0].slice(1,-1)
-}
-class HtmlExtractTool{
-  any = `[.\\n\\S\\s]*?`
-  nSpace = `[\\s\\n]*`
-  cacheStr = ""
-  matchWithErrorHandle(str,regStr){
-    try{
-      let res = str.match(new RegExp(regStr))[0]
-      cacheStr = res;
-      return res
-    }catch(e){
-      console.warn(e);
-    }
-  }
-  extractHtmlTag(str,tag,attr="",noCloseTag=false){
-    let tagRegexp = getTagRegexp(tag,attr,noCloseTag);
-    this.matchWithErrorHandle(str,tagRegexp);
-  }
-  extractAttributeValue(attr){
-    if(attr==null) {console.warn("Undefined attribute value");return;}
-    attr = attr.replace(/\s/g,'')
-    return this.matchWithErrorHandle(attr,`(?<=")${this.any}(?=")`);
-  }
-  getTagRegexp(tag,attr="",noCloseTag=false) { 
-    if(noCloseTag){
-      if(attr!=="" && attr!=null){ 
-        return `<${tag}${this.any}${attr}${this.any}>`
-      }
-      return `<${tag}${this.any}>`
-    }
-    if(attr!=="" && attr!=null){ 
-      return `<${tag}${this.any}${attr}${this.any}>${this.any}</${tag}>`
-    }
-    return `<${tag}${this.any}>${this.any}</${tag}>`
-  }
-  getAttrRegex(name,value=false){
-    if(value){
-      return `${name+this.nSpace}=${this.nSpace}"${this.any+value+this.any}"`
-    }
-    return `${name+this.nSpace}=${this.nSpace}"${this.any}"`
-  }
-}
-
-
-function extractHtmlTag(str,tag,attr="",noCloseTag=false){
-  try{
-    return str.match(new RegExp(getTagRegexp(tag,attr,noCloseTag)))[0];
-  }catch(e){
-    console.warn("Tag not found.",e)
-  }
-}
-const any = `[.\\n\\S\\s]*?`
-function getTagRegexp(tag,attr="",noCloseTag=false) { 
-  if(noCloseTag){
-    if(attr!=="" && attr!=null){ 
-      return `<${tag}${any}${attr}${any}>`
-    }
-    return `<${tag}${any}>`
-  }
-  if(attr!=="" && attr!=null){ 
-    return `<${tag}${any}${attr}${any}>${any}</${tag}>`
-  }
-  return `<${tag}${any}>${any}</${tag}>`
-}
-function extractAttributeValue(attr){
-  if(attr==null) {console.warn("Undefined attribute value");return;}
-  attr = attr.replace(/\s/g,'')
-  return attr.match(new RegExp(`(?<=")${any}(?=")`))[0];
-}
-function extractAttribute(html,name,value=false){
-  try{
-    return html.match(new RegExp(getAttrRegex(name,value)))[0];
-  }catch(e){
-    console.warn("Attribute not found.",e)
-  }
-}
-function getAttrRegex(name,value=false){
-  let any = `[.\\n\\S\\s]*?`
-  let nSpace = `[\\s\\n]*`
-  if(value){
-    return `${name+nSpace}=${nSpace}"${any+value+any}"`
-  }
-  return `${name+nSpace}=${nSpace}"${any}"`
-}
-function extractNgIf(str){
-    return str.match(new RegExp('\\*ngIf=".*?"'))[0];
-}
-function extractDto(str,isInnerStr = false){
-    console.log(str)
-    if(isInnerStr){
-        return str.trim().split('.').slice(0,-1).join('.').trim()
-    }
-    return extractJhiTranslate(str).trim().split('.').slice(0,-1).join('.').trim();
-}
-function extractDtoNBase(str,isInnerStr = false){
-  // retruns "a.b.c" [ "a.b", "c" ]
-    console.log(str)
-    if(isInnerStr){
-        return [str.trim().split('.').slice(0,-1).join('.').trim(),str.trim().split('.').splice(-1).join('.')]
-    }
-    return [extractJhiTranslate(str).trim().split('.').slice(0,-1).join('.').trim(),extractJhiTranslate(str).trim().split('.').splice(-1).join('.')];
-}
-function createTrStructureObj(trArray){
-    let trObjArr =  [];
-    for(let tr of trArray){
-        let trObj = {};
-        try{
-          trObj["subValue"] = extractNgSubValue(tr);
-        }catch(err){
-          console.log(err);
-        }
-        try{
-          trObj["jhiTranslate"]  = extractJhiTranslate(tr);
-        }catch(err){
-          console.log(err);
-        }
-        try{
-          trObj["ngIf"] = extractNgIf(tr);
-        }catch(err){
-          trObj["ngIf"] = "";
-        }
-        trObjArr.push(trObj);
-    }
-    return trObjArr;
-}
-function createTabStructureObj(str){
-  let tabStructure = [];
-//   if(ngbTabArray.length === 0){
-//     // tabStructure
-//   }
-  let ngbTabArray = getAllTabs(str);
-  let tabArr = [];
-  for(let ngbTab of ngbTabArray ){
-    let tabTitle = extractNgTabTitle(ngbTab);
-    let trArray  = getAllTr(ngbTab);
-    let trObjArr = createTrStructureObj(trArray);
-    tabArr.push({[tabTitle]:trObjArr});
-  }
-  return tabArr;
-}
-// let tabStructureArr = createTabStructureObj(compareHtml);
-function generateTabHeader(tabStructureArr){
-  
-  let html = `<div class="tab-wrapper">\n`
-  for(let [i, tabStructure] of tabStructureArr.entries()){
-    html+= `\t<a class="tab" [ngClass]="{ active: tabIndex == ${i} }" (click)="tabIndex = ${i}">${Object.keys(tabStructure)[0]}</a>\n`
-  }
-  return  html+`</div>`
-}
-function generateTrs(tabStructure){
-    let tabHtml=``;
-    for(let tab of tabStructure[Object.keys(tabStructure)[0]]){
-        let extractedDtoPartText  = extractDto(tab.jhiTranslate,true);
-        let removedDtoPartText = tab.jhiTranslate.replace(extractedDtoPartText+'.',"")
-        let textInsider = seperateCharectersUponUppercase(removedDtoPartText,true)
-        if(tab.subValue){
-
-            tabHtml+=` 
-            <div ${tab.ngIf} class="list">
-            \t<div jhiTranslate="${tab.jhiTranslate}" class="list-label">${textInsider}</div>
-            \t<div class="list-content">{{ ${tab.subValue} }}</div>
-            </div>\n`
-        }else{
-            tabHtml+=`
-            <tr>
-                <td></td>
-                <td class="p-2 text-secondary">
-                    <h6 jhiTranslate="${tab.jhiTranslate}">${textInsider}</h6>
-                </td>
-            </tr>\n`
-        }
-    }
-    return tabHtml;
-}
-// function captureSearchForm(html){
-//     html.
-// }
-function getObjectValue(obj,key){
-  let arr = key.split('.');
-  let maxIterations = 100; 
-  let iterations = 0;
-  let res=obj;
-  while((arr.length!==0) && (iterations<maxIterations)){ 
-    iterations++;
-    res = res[arr[0]];
-    arr.shift(); 
-  }
-  return res;
-}
-function wrapDataWithDiv(value){
-    return `<div class="w-full">${value}</div>`
-}
-function genPageHeader(jhi){
-  let exJhi = extractJhiTranslate(jhi);
+function genPageHeader(jhi) {
+  let exJhiAttr = htmlExtractTool.extractAttribute(jhi, "jhiTranslate");
+  let exJhiVal = htmlExtractTool.extractAttributeValue(exJhiAttr);
   return `<div ${jhi} class="page-head">
-      ${getObjectValue(data,exJhi)}
-  </div>`
+      ${oHC.getObjectValue(data, exJhiVal)}
+  </div>`;
 }
-function wrapWithPageBody(value){
-  return `<div class="page-body">${value}</div>`
-}
-function generateSearchForm(){
-  return  `<div class="flex w-1/2 gap-2">`
-  `</div>`
+// wrapWithTag("w-full",value)
+// wrapWithTag("page-body",value)
+// wrapWithTag("flex w-1/2 gap-2",value)
+// wrapWithTag("flex justify-between items-center p-3",value)
+
+// wrapWithTag("flex gap-3",value)
+// wrapWithTag("p-3",value)
+// wrapWithTag("paginator-container",value)
+console.log(
+  genPageHeader(`jhiTranslate="encoreclientApp.associates.home.heading"`)
+);
+let formTag = htmlExtractTool.extractHtmlTag(compareHtml, "form", "searchForm");
+let divs = htmlExtractTool.extractAllTagWithAttr(formTag, "div", "col-2");
+let attrArr=[];
+for (let div of divs) {
+  let input = htmlExtractTool.extractHtmlTag(div, "(input)", "", true);
+  let select = htmlExtractTool.extractHtmlTag(div,"select")
+  if(!input && !select) continue;
+  else if(input)   handleInput(input,'i')
+  else if(select) handleInput(select,'s')
+  else console.warn("something is different",input)
 }
 
-function getAllTagWithAttr(html,tag,attr){
-  let match;
-  // let [match,replacedStr]  = matchNReplace(inputStr,'<ngb-tab[\\s>]+?[\\S\\s\\n.]*?</ngb-tab>')
-  let tagArray = []
-  while(isPresent(html,getTagRegexp(tag,attr))){
-    [ match,html ] = matchNReplace(html,getTagRegexp(tag,attr)) 
-    tagArray.push(match);    
+function handleInput(input,type) {
+    console.log(input)
+    input = htmlExtractTool.removeAttribute(input,'class');
+
+    input = htmlExtractTool.removeAttribute(input,'type');
+    input = htmlExtractTool.addAttribute(input,'type="search"')
+    console.log(input)
+}
+function generateTabBody(tabStructureArr) {
+  let tabHtml = ``;
+  for (let [i, tabStructure] of tabStructureArr.entries()) {
+    tabHtml += `\t<!---- TAB ${i + 1} ---->\n
+  <div *ngIf="tabIndex == ${i}" class="font-medium">\n`;
+    tabHtml += generateTrs(tabStructure);
+    tabHtml += `\t</div>\n`;
   }
-  return tagArray;
+  tabHtml = wrapRowDataWithDiv(tabHtml);
+  return tabHtml;
 }
-let formTag = extractHtmlTag(compareHtml,'form',"searchForm");
-console.log(formTag);
-let divs  = getAllTagWithAttr(formTag,'div','col-2')
-console.log(divs)
-for(let div of divs){
-  // console.log(div)
-  let input = extractHtmlTag(div,'(input|select)','',true);
-  console.log(input)
-  console.log(extractAttribute(input,'type'))
+function generateShowPageMainBody(htmlText) {
+  let showPageMainBodyHtml = ``;
+  if (getAllTabs(htmlText).length === 0) {
+    let trs = getAllTr(htmlText);
+    let createdTrStructureObj = createTrStructureObj(trs);
+    let genTrs = generateTrs({ oneTime: createdTrStructureObj });
+    showPageMainBodyHtml = wrapRowDataWithDiv(genTrs);
+  } else {
+    showPageMainBodyHtml += generateTabHeader(createTabStructureObj(htmlText));
+    showPageMainBodyHtml += generateTabBody(createTabStructureObj(htmlText));
+  }
+  return showPageMainBodyHtml;
 }
+function generateEntireListPageHtml(htmlText) {
+  let html = ``;
+  return html;
+}
+
+let setUpUI = new SetupUI(generateEntireListPageHtml);
+
+
+//   if(type === 'i'){
+//     console.log(input)
+//   }else if(type === 's'){
+//     console.log()
+//   }else{
+//     console.log("Else reached")
+//   }
 // function genPageBody()
 //let str  = 'encoreclientApp.associates.home.heading'
 // let arr = str.split('.').map((a)=>[a])
 // let i = 0; while(arr.length!==0){ res = arr[i];arr.shift() }
 // console.log(encoreclientApp)
-console.log(genPageHeader(`jhiTranslate="encoreclientApp.associates.home.heading"`))
-function generateTabBody(tabStructureArr){
-  let tabHtml = ``;
-  for(let [i, tabStructure] of tabStructureArr.entries()){
-    tabHtml+=`\t<!---- TAB ${i+1} ---->\n
-  <div *ngIf="tabIndex == ${i}" class="font-medium">\n`
-    tabHtml+=generateTrs(tabStructure);
-    tabHtml+=`\t</div>\n`
-  }
-  tabHtml=wrapRowDataWithDiv(tabHtml);
-  return tabHtml;
-}
-// extractDto(compareHtml)
-// console.log(generateTabBody(createTabStructureObj(compareHtml)))
-function capitalizeFirstLetter(strToCapitalize){
-    return strToCapitalize[0].toUpperCase() + strToCapitalize.slice(1);
-}
-function seperateCharectersUponUppercase(strInput,firstCap){
-if(firstCap){ 
-  return capitalizeFirstLetter(strInput.split(/(?=[A-Z])/).join(' '))
-}
-return strInput.split(/(?=[A-Z])/).join(' ')
-}
-function generateShowPageMainBody(htmlText){
-    let showPageMainBodyHtml = ``;
-    if(getAllTabs(htmlText).length ===0){
-        let trs = getAllTr(htmlText)
-        let createdTrStructureObj = createTrStructureObj(trs)
-        let genTrs = generateTrs({oneTime:createdTrStructureObj});
-        showPageMainBodyHtml = wrapRowDataWithDiv(genTrs);
-    }else{
-        showPageMainBodyHtml += generateTabHeader(createTabStructureObj(htmlText)) 
-        showPageMainBodyHtml += generateTabBody(createTabStructureObj(htmlText))
-    }
-    return showPageMainBodyHtml;
-}
-function generateEntireShowPageHtml(htmlText){
-    let html =``;
-    html = generateShowPageMainBody(htmlText);
-    html = wrapWithHeaderHtml(html,"Associates");
-    return html;
-}
-function setupUI(){
-  let inputArea= document.getElementsByClassName('textarea')[0];
-  let outputArea = document.getElementsByClassName('textarea')[1];
-  let copyButton = document.getElementById('copy');
-  let convertButton = document.getElementById('convert');
-  let pasteButton = document.getElementById('paste');
-  let prettifyButton = document.getElementById('pretty');
-  let isFlatCheckbox = document.getElementById('isFlatCheckbox');
-  let title = document.getElementById('title');
-  let checkLabel = document.getElementById('check-label');
-  function copyFromElem(element){
-    // console.log(element)
-    navigator.clipboard.writeText(element.value);
-  }
-  function paste2Elem(element){
-    element.value='';
-    navigator.clipboard.readText().then((text)=>{
-      element.value = text;
-    });
-  }
-  function prettifyButtonHandler(...args){
-    let space = 2
-    args.forEach(elem => {
-      elem.value = elem.value.replaceAll(/\\n/g,String.fromCharCode(10));
-      elem.value = elem.value.replaceAll(/\\t/g,String.fromCharCode(9));
-    })
-  }
-  function convertButtonHandler(inputArea,outputArea){
-    outputArea.value='';
-    setTimeout(()=>{
-        console.log(generateEntireShowPageHtml(inputArea.value))
-        outputArea.value = generateEntireShowPageHtml(inputArea.value)
-    },100)
-  }
 
-  // Add listeners
-  copyButton.addEventListener('click', event => copyFromElem(outputArea));
-  prettifyButton.addEventListener('click', event => prettifyButtonHandler(inputArea,outputArea));
-  pasteButton.addEventListener('click',(event)=> paste2Elem(inputArea));
-  convertButton.addEventListener('click', (event)=>convertButtonHandler(inputArea,outputArea));
+    // let formControl = htmlExtractTool.extractAttribute(input,'(\\[\\(ngModel\\)\\]|formControlName)')
+    // input = htmlExtractTool.removeAttribute(input,'(\\[\\(ngModel\\)\\]|formControlName)');
+    // input = htmlExtractTool.addAttribute(input,'formControl')
+// function genSrchBxHtml(){
+//   wrapWithTag()
 
-  // Set Titles
-  checkLabel.innerText = "NA"
-  title.innerText = `Old to new show page`
-}
-function main(){
-  setupUI();
-}
-main()
+//   for()
+// }
+
+
+  // attr = htmlExtractTool.extractAttribute(input, "type");
+  // if(attr){
+  //   attrArr.push(attr);
+  // }
+
+// function wrap(openTag,value,closeTag){
+//   let nl ='\n'
+//   return `${openTag+nl+value+nl+closeTag}`
+// }
+// function wrapDataWithDiv(value) {
+//   return `<div class="w-full">${value}</div>`;
+// }
+// function wrapWithPageBody(value) {
+//   return `<div class="page-body">${value}</div>`;
+  
+// }
+// function generateSearchForm() {
+//   return `<div class="flex w-1/2 gap-2">`+`</div>`;
+// }
