@@ -26,6 +26,7 @@ class ObjectHelperClass{
 
 class HtmlTool{
   any = `[.\\n\\S\\s]*?`
+  any2 = `[.\\n\\s]*?`
   nSpace = `[\\s\\n]*?`
   closeTag=`[>\\n\\s\\t]+?`
   cacheStr = ""
@@ -78,12 +79,12 @@ class HtmlTool{
   }
   getTagRegexp(tag,attr="",noCloseTag=false) { 
     if(noCloseTag) return `<${tag+this.closeTag+this.any}${attr}${this.any}>`
-    return `<${tag+this.closeTag+this.any}${attr}${this.any}</${tag}>`
+    if(attr!==""){ return `<${tag+this.any+attr+this.any+'>'+this.any}</${tag}>`;}
+    return `<${tag+this.closeTag+this.any}</${tag}>`
   }
   getAttrRegex(name,value='',last=false){
     let regex = `${name+this.nSpace}=${this.nSpace}"${this.any+value+this.any}"`
     if(last){
-      console.log(`(${regex})(?![.\S\s\n]*${regex})`)
       return `${regex}(?![.\S\n]*${name})`
     }
     return regex

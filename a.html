@@ -1,0 +1,148 @@
+<!--  -->
+
+<div class="w-full">
+  <div class="page-head">List All Associates</div>
+  <div class="page-body">
+    <!---HEAD-->
+    <div class="flex justify-between items-center p-3">
+      <div class="flex w-1/2 gap-2">
+        <div type="search" class="search-box">
+          <input
+            type="search"
+            name="customerId"
+            id="currentSearch.customerId"
+            placeholder="Customer Id"
+            [(ngModel)]="currentSearch.customerId"
+          />
+        </div>
+        <div class="search-box">
+          <select
+            type="search"
+            name="associateType"
+            id="field_associateType"
+            [(ngModel)]="currentSearch.associateType"
+          >
+            <option selected value="">--Select Associate Type--</option>
+            <option
+              *ngFor="let associateType of associateTypeList"
+              [value]="associateType.code"
+            >
+              {{associateType.name}}
+            </option>
+          </select>
+        </div>
+        <div class="search-box">
+          <input
+            type="search"
+            name="associateName"
+            id="currentSearch.associateName"
+            placeholder="Associate Name"
+            [(ngModel)]="currentSearch.name"
+          />
+        </div>
+        <button class="btn-dark-blue" (click)="search()">Search</button>
+        <button class="link" (click)="clear()" *ngIf="currentSearch">
+          Clear
+        </button>
+      </div>
+      <div class="flex gap-3">
+        <button
+          class="btn-dark-blue"
+          (click)="createAssociate()"
+          *jhiHasAnyAuthority="['ROLE_CreateCustomerAssociate']"
+        >
+          New Associates
+        </button>
+      </div>
+    </div>
+    <jhi-alert></jhi-alert>
+    <!---TABLE-->
+    <div class="p-3">
+      <table class="table-box">
+        <thead>
+          <tr>
+            <th jhiTranslate="encoreclientApp.associates.associateName">
+              Associate Name
+            </th>
+            <th jhiTranslate="encoreclientApp.associates.customerId">
+              CustomerID
+            </th>
+            <th jhiTranslate="encoreclientApp.associates.associateType">
+              Associate Type
+            </th>
+            <th jhiTranslate="encoreclientApp.associates.effectiveDate">
+              Effective Date
+            </th>
+            <th jhiTranslate="encoreclientApp.associates.expiryDate">
+              Expiry Date
+            </th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let associate of associates ;trackBy: trackId">
+            <td>{{associate.displayName}}</td>
+            <td>{{associate.customerId}}</td>
+            <td>{{associate.associateType}}</td>
+            <td>{{associate.effectiveDate | date:'mediumDate'}}</td>
+            <td>{{associate.expiryDate | date:'mediumDate'}}</td>
+            <td>
+              <div class="flex items-center gap-2">
+                <button
+                  class="link"
+                  [routerLink]="['view', associate.id ]"
+                  *jhiHasAnyAuthority="['ROLE_ShowLoanProduct']"
+                  jhiTranslate="entity.action.view"
+                >
+                  View
+                </button>
+                <button
+                  class="link"
+                  [routerLink]="['edit', associate.id]"
+                  *jhiHasAnyAuthority="['ROLE_UpdateLoanProduct'] "
+                  jhiTranslate="entity.action.edit"
+                >
+                  Edit
+                </button>
+                <button
+                  class="link"
+                  (click)="delete(associate.id)"
+                  *jhiHasAnyAuthority="['ROLE_DeleteCustomerAssociate']"
+                  jhiTranslate="entity.action.delete"
+                >
+                  Delete
+                </button>
+              </div>
+            </td>
+            <!-- <td>
+              <button class="flex items-center gap-1 text-sky-600" [matMenuTriggerFor]="l">
+                <span> Actions</span>
+                <span class="material-icons"> expand_more </span>
+              </button>
+              <mat-menu #l="matMenu">
+                <div class="flex flex-col">
+                  <div class="w-full text-slate-700">
+                    <button class="w-full px-3 py-2 text-left hover:bg-gray-200">View</button>
+                    <button class="w-full px-3 py-2 text-left hover:bg-gray-200">Edit</button>
+                  </div>
+                </div>
+              </mat-menu>
+            </td> -->
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="paginator-container" *ngIf="associates && associates.length">
+        <mat-paginator
+          [length]="totalItems"
+          [pageSize]="itemsPerPage"
+          [pageIndex]="page"
+          [pageSizeOptions]="[5, 10, 15, 25, 50]"
+          [showFirstLastButtons]="true"
+          (page)="loadPage($event)"
+        >
+        </mat-paginator>
+      </div>
+    </div>
+  </div>
+</div>

@@ -174,6 +174,11 @@ function genPageHeader(jhi) {
       ${oHC.getObjectValue(data, exJhiVal)}
   </div>`;
 }
+function genPageHeaderButtons(compareHtml){
+    let buttonDiv = htmlExtractTool.extractHtmlTag(compareHtml,'div','class="col-. text-right')
+    return buttonDiv
+}
+console.log(genPageHeaderButtons(compareHtml))
 // wrapWithTag("w-full",value)
 // wrapWithTag("page-body",value)
 // wrapWithTag("flex w-1/2 gap-2",value)
@@ -182,38 +187,36 @@ function genPageHeader(jhi) {
 // wrapWithTag("flex gap-3",value)
 // wrapWithTag("p-3",value)
 // wrapWithTag("paginator-container",value)
-console.log(
-  genPageHeader(`jhiTranslate="encoreclientApp.associates.home.heading"`)
-);
 function indentAllLines(text,noOfIndentations=1){
     return text.replaceAll(/^/gm,'\t'.repeat(noOfIndentations))
 }
-let formTag = htmlExtractTool.extractHtmlTag(compareHtml, "form", "searchForm");
-let divs = htmlExtractTool.extractAllTagWithAttr(formTag, "div", "col-2");
-let attrArr=[];
-let html = ``
-for (let div of divs) {
-  let input = htmlExtractTool.extractHtmlTag(div, "(input)", "", true);
-  let select = htmlExtractTool.extractHtmlTag(div,"select")
-  if(!input && !select) continue;
-  else if(input)  {
-     html+= handleInput(input,'i')
-  }
-  else if(select)   {
-     html+= handleInput(select,'s')
-  }
-  else console.warn("something is different",input)
+function generateSearchForm(compareHtml){
+    let formTag = htmlExtractTool.extractHtmlTag(compareHtml, "form", "searchForm");
+    let divs = htmlExtractTool.extractAllTagWithAttr(formTag, "div", "col-2");
+    let attrArr=[];
+    let html = ``
+    for (let div of divs) {
+      let input = htmlExtractTool.extractHtmlTag(div, "(input)", "", true);
+      let select = htmlExtractTool.extractHtmlTag(div,"select")
+      if(!input && !select) continue;
+      else if(input)  {
+         html+= handleInput(input,'i')
+      }
+      else if(select)   {
+         html+= handleInput(select,'s')
+      }
+      else console.warn("something is different",input)
+    }
+    return html;
 }
 function genTheadRow(jhi){
     let attrVal = htmlExtractTool.extractAttributeValue(jhi);
-    console.log(attrVal,jhi)
     return indentAllLines(`<th ${jhi}>${oHC.getObjectValue(data,attrVal)}</th>\n`)
 }
 function genThRows(compareHtml){
     let table = htmlExtractTool.extractHtmlTag(compareHtml, "table");
     let thead = htmlExtractTool.extractHtmlTag(table, "thead");
     let thRows = htmlExtractTool.extractAllTagWithAttr(thead, "th");
-    console.log(thRows)
     let html =``
     for(let thRow of thRows){
         let jhi = htmlExtractTool.extractAttribute(thRow,'jhiTranslate');
@@ -230,18 +233,30 @@ function genTbRows(compareHtml){
     let table = htmlExtractTool.extractHtmlTag(compareHtml, "table");
     let tbody = htmlExtractTool.extractHtmlTag(table, "tbody");
     
-    let tr = htmlExtractTool.extractHtmlTag(tbody, "tr","\\\*ngFor=");
-    console.log(tr)
+    let tr = htmlExtractTool.extractHtmlTag(tbody, "tr","\\*ngFor=");
     let tdRows = htmlExtractTool.extractAllTagWithAttr(tr, "td");
-    console.log(tdRows);
     // console.log(thRows)
     let html =``
+    let buttonHtml 
     for(let tdRow of tdRows){
-        console.log(tdRow)
-        let jhi = htmlExtractTool.extractAttribute(thRow,'jhiTranslate');
-        if(jhi){
-            html+= genTheadRow(jhi);
+        if(htmlExtractTool.isPresent(tdRow,'<div[.\\n\\S\\s]*?<button')){
+            let buttons  = htmlExtractTool.extractAllTagWithAttr(tdRow,'button')
+            let buttonsHtml  = ``;
+            for(let button of buttons){
+                button = htmlExtractTool.removeAttribute(button,'type')
+                button = htmlExtractTool.removeAttribute(button,html,'class')
+                button =  htmlExtractTool.addAttribute(button,'class="link"')
+                buttonsHtml+=button;
+            }
+            buttonsHtml = wrapWithTag(buttonsHtml,'flex items-center gap-2') 
+            html+=buttonsHtml
+        }else{
+            html+= tdRow;
         }
+        // let jhi = htmlExtractTool.extractAttribute(thRow,'jhiTranslate');
+        // if(jhi){
+        //     html+= genTheadRow(jhi);
+        // }
     }
     html+=`\t<th>Actions</th>`
     html = wrapWithTag(html,'','','tr')
@@ -249,10 +264,45 @@ function genTbRows(compareHtml){
     return html;
 }
 // console.log(genThRows(compareHtml))
-console.log(genTbRows(compareHtml))
+function generateTableWithPag(compareHtml){
+    let html = ``;
+    html+= genThRows(compareHtml)
+    html+= genTbRows(compareHtml)
+    html = wrapWithTag(html,'table-box','','table')+'\n' 
+    html+=generatePaginator(getLastNgIf(compareHtml))
+    html = '\n<!---TABLE-->\n'+wrapWithTag(html,'p-3')
+    return html
 
-function generatePaginator() {
-    return `<div class="paginator-container" *ngIf="associates && associates.length">
+}
+function genPage(compareHtml){
+    let firstH6 = htmlExtractTool.extractHtmlTag(compareHtml, "h6")
+    let jhi = htmlExtractTool.extractAttribute(firstH6,'jhiTranslate');
+    let header = genPageHeader(jhi)
+    let html =  generateSearchForm(compareHtml)
+    html = addSrchNClrButtons(html);
+    html = indentAllLines(html);
+    html = wrapWithTag(html,"flex w-1/2 gap-2")
+    html += `\n<jhi-alert></jhi-alert>\n`
+    html+= generateTableWithPag(compareHtml);
+    html = `<!---HEAD-->\n`+html;
+    html = wrapWithTag(html,"page-body")
+    html = header+'\n'+html;
+    html = wrapWithTag(html,'w-full')
+    return html;
+}
+console.log(genPage(compareHtml));
+
+function getLastNgIf(html){
+    let regexp  =new RegExp(`\\*ngIf=".*?"(?=[.\\s\\n]*?style="background-color: #f8f9fa;")`)
+    let ngif = htmlExtractTool.extractAttribute(html.match(regexp)[0],'\\*ngIf')
+    return ngif;
+}
+// console.log(generateTableWithPag(compareHtml))
+// console.log(htmlExtractTool.extractAttribute(compareHtml,'\\*ngIf[.\\s\\S\\n]*(?=background-color: #f8f9fa)'))
+// console.log()
+
+function generatePaginator(ngIf) {
+    return `<div class="paginator-container" ${ngIf}
           <mat-paginator
             [length]="totalItems"
             [pageSize]="itemsPerPage"
@@ -264,11 +314,7 @@ function generatePaginator() {
           </mat-paginator>
         </div>`
 }
-html = addSrchNClrButtons(html);
-html = indentAllLines(html);
-html = wrapWithTag(html,"flex w-1/2 gap-2")
 // console.log(htmlExtractTool.extractAttribute(compareHtml,'\\*ngIf','',true))
-// console.log(html);
 
 
 function handleInput(input,type) {
@@ -279,7 +325,7 @@ function handleInput(input,type) {
     input = wrapWithTag(input,"",`type="search" class="search-box"` )
     return input+'\n';
 }
-function addSrchNClrButtons(value){
+function addSrchNClrButtons(html){
     return html+`
 <button class="btn-dark-blue" (click)="search()">Search</button>\n
 <button class="link" (click)="clear()" *ngIf="currentSearch">Clear</button>\n`
