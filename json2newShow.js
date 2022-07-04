@@ -175,10 +175,17 @@ function genPageHeader(jhi) {
   </div>`;
 }
 function genPageHeaderButtons(compareHtml){
-    let buttonDiv = htmlExtractTool.extractHtmlTag(compareHtml,'div','class="col-. text-right')
-    return buttonDiv
+    let buttonDiv = htmlExtractTool.extractHtmlTag2(compareHtml,'div','class="col-.*? text-right')
+    let buttons = htmlExtractTool.extractAllTagWithAttr(buttonDiv,'button');
+    let buttonsHtml = ``;
+    for(let button of buttons){
+        button = htmlExtractTool.removeAttribute(button, 'class');
+        button = htmlExtractTool.addAttribute(button,'class="btn-dark-blue"')
+        buttonsHtml+=button;
+    }
+    let wrapButton  = wrapWithTag(buttonsHtml,'flex gap-3')
+    return wrapButton
 }
-console.log(genPageHeaderButtons(compareHtml))
 // wrapWithTag("w-full",value)
 // wrapWithTag("page-body",value)
 // wrapWithTag("flex w-1/2 gap-2",value)
@@ -229,41 +236,63 @@ function genThRows(compareHtml){
     html = wrapWithTag(html,'','','thead')
     return html;
 }
+function cleanSpanButton(html){
+    let span =htmlExtractTool.extractHtmlTag(html,'span')
+    if(!span) return html
+    let jhi = htmlExtractTool.extractAttribute(span,'jhiTranslate');
+    let jhiVal = htmlExtractTool.extractAttributeValue(jhi);
+    let repl = htmlExtractTool.replaceWithErrorHandle(html,'',"",span);
+    repl = htmlExtractTool.replaceValueOfTag(repl,oHC.getObjectValue(data,jhiVal));
+    return htmlExtractTool.addAttribute(repl,jhi)+'\n';
+}
 function genTbRows(compareHtml){
     let table = htmlExtractTool.extractHtmlTag(compareHtml, "table");
     let tbody = htmlExtractTool.extractHtmlTag(table, "tbody");
-    
+    let ngIfNoRes = htmlExtractTool.matchWithErrorHandle(tbody,'<tr[\\n\\s.]*?\\*ngIf="![.\\s\\S\\n]*?</tr>')
+    console.log(ngIfNoRes)
+    let ngif= htmlExtractTool.extractAttribute(ngIfNoRes,'\\*ngIf')
     let tr = htmlExtractTool.extractHtmlTag(tbody, "tr","\\*ngFor=");
+    let ngFor = htmlExtractTool.extractAttribute(tr,'\\*ngFor')
     let tdRows = htmlExtractTool.extractAllTagWithAttr(tr, "td");
     // console.log(thRows)
     let html =``
-    let buttonHtml 
+    let noResHtml = ``
     for(let tdRow of tdRows){
+        console.log(tdRow)
         if(htmlExtractTool.isPresent(tdRow,'<div[.\\n\\S\\s]*?<button')){
             let buttons  = htmlExtractTool.extractAllTagWithAttr(tdRow,'button')
             let buttonsHtml  = ``;
             for(let button of buttons){
                 button = htmlExtractTool.removeAttribute(button,'type')
-                button = htmlExtractTool.removeAttribute(button,html,'class')
+                button = htmlExtractTool.removeAttribute(button,'class')
                 button =  htmlExtractTool.addAttribute(button,'class="link"')
+                button = cleanSpanButton(button);
                 buttonsHtml+=button;
             }
             buttonsHtml = wrapWithTag(buttonsHtml,'flex items-center gap-2') 
+            
+            buttonsHtml =wrapWithTag(buttonsHtml,'','','td')
             html+=buttonsHtml
         }else{
-            html+= tdRow;
+            if(tdRow.includes('noResultsFound')){
+                noResHtml+=wrapWithTag(tdRow,'',ngif,'tr');
+            }else{
+                html+= tdRow;
+            }
         }
         // let jhi = htmlExtractTool.extractAttribute(thRow,'jhiTranslate');
         // if(jhi){
         //     html+= genTheadRow(jhi);
         // }
     }
-    html+=`\t<th>Actions</th>`
-    html = wrapWithTag(html,'','','tr')
+    html = wrapWithTag(html,'',ngFor,'tr')
+    if(noResHtml){
+        html+=noResHtml;
+    }
     html = wrapWithTag(html,'','','tbody')
     return html;
 }
-// console.log(genThRows(compareHtml))
+// console.log(genTbRows(compareHtml))
 function generateTableWithPag(compareHtml){
     let html = ``;
     html+= genThRows(compareHtml)
@@ -280,17 +309,18 @@ function genPage(compareHtml){
     let header = genPageHeader(jhi)
     let html =  generateSearchForm(compareHtml)
     html = addSrchNClrButtons(html);
+    html+=genPageHeaderButtons(compareHtml);
     html = indentAllLines(html);
-    html = wrapWithTag(html,"flex w-1/2 gap-2")
+    html = wrapWithTag(html,"flex flex-wrap items-center p-3 gap-4 border-t")
     html += `\n<jhi-alert></jhi-alert>\n`
     html+= generateTableWithPag(compareHtml);
     html = `<!---HEAD-->\n`+html;
     html = wrapWithTag(html,"page-body")
     html = header+'\n'+html;
     html = wrapWithTag(html,'w-full')
-    return html;
+    return html.trim();
 }
-console.log(genPage(compareHtml));
+// console.log(genPage(compareHtml).trim());
 
 function getLastNgIf(html){
     let regexp  =new RegExp(`\\*ngIf=".*?"(?=[.\\s\\n]*?style="background-color: #f8f9fa;")`)
@@ -302,7 +332,7 @@ function getLastNgIf(html){
 // console.log()
 
 function generatePaginator(ngIf) {
-    return `<div class="paginator-container" ${ngIf}
+    return `<div class="paginator-container" ${ngIf} >
           <mat-paginator
             [length]="totalItems"
             [pageSize]="itemsPerPage"
@@ -361,7 +391,7 @@ function generateEntireListPageHtml(htmlText) {
   return html;
 }
 
-let setUpUI = new SetupUI(generateEntireListPageHtml);
+let setUpUI = new SetupUI(genPage);
 
 
 //   if(type === 'i'){

@@ -42,8 +42,9 @@ class HtmlTool{
       console.warn(e);
     }
   }
-  replaceWithErrorHandle(str,regStr,repVal){
+  replaceWithErrorHandle(str,regStr,repVal,text=false){
     try{
+      if(text){ return str.replace(text,repVal).trim() }
       return str.replace(new RegExp(regStr),repVal).trim()
     }catch(e){
       console.warn(e);
@@ -51,12 +52,16 @@ class HtmlTool{
   }
   matchNReplace(inputStr,regexp){
     let match,replacedStr;
-    match=inputStr.match(new RegExp(regexp))
+    match=inputStr.match(new RegExp(regexp)) 
     replacedStr = inputStr.replace(match,'');
     return [match[0],replacedStr];
   }
   extractHtmlTag(str,tag,attr="",noCloseTag=false){
     const tagRegexp = this.getTagRegexp(tag,attr,noCloseTag);
+    return this.matchWithErrorHandle(str,tagRegexp);
+  }
+  extractHtmlTag2(str,tag,attr="",noCloseTag=false){
+    const tagRegexp = this.getTagRegexp2(tag,attr,noCloseTag);
     return this.matchWithErrorHandle(str,tagRegexp);
   }
   extractAttributeValue(attr){
@@ -82,6 +87,11 @@ class HtmlTool{
     if(attr!==""){ return `<${tag+this.any+attr+this.any+'>'+this.any}</${tag}>`;}
     return `<${tag+this.closeTag+this.any}</${tag}>`
   }
+  getTagRegexp2(tag,attr="",noCloseTag=false) { 
+    if(noCloseTag) return `<${tag+this.closeTag+this.any}${attr}${this.any}>`
+    if(attr!==""){ return `<${tag+this.any2+attr+this.any+'>'+this.any}</${tag}>`;}
+    return `<${tag+this.closeTag+this.any}</${tag}>`
+  }
   getAttrRegex(name,value='',last=false){
     let regex = `${name+this.nSpace}=${this.nSpace}"${this.any+value+this.any}"`
     if(last){
@@ -99,5 +109,9 @@ class HtmlTool{
   addAttribute(html,attr){
     let regex = "(?<=<.+?\\s+?)"
     return this.replaceWithErrorHandle(html,regex,""+attr+" ")
+  }
+  replaceValueOfTag(html,value){
+    let regex = `(?<=<${this.any}>)${this.any}(?=</${this.any}>)`
+    return this.replaceWithErrorHandle(html,regex,value)
   }
 }
