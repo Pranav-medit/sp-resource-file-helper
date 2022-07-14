@@ -1,9 +1,9 @@
-let data;
+let jhiData;
 $.ajax({
   url: "./en.json",
   async: false,
   success: function (res) {
-    data = res;
+    jhiData = res;
   },
   error: function () {
     alert("An error was encountered.");
@@ -160,6 +160,7 @@ let compareHtml = `<div class="card-body">
 let htmlExtractTool = new HtmlTool();
 let sH = new StringHelper();
 const oHC  = new ObjectHelperClass();
+const htmlFormatter = new HtmlFormatter();
 
 
 function wrapWithTag(value="",_class="",eAttr="",tag="div"){
@@ -171,19 +172,25 @@ function genPageHeader(jhi) {
   let exJhiAttr = htmlExtractTool.extractAttribute(jhi, "jhiTranslate");
   let exJhiVal = htmlExtractTool.extractAttributeValue(exJhiAttr);
   return `<div ${jhi} class="page-head">
-      ${oHC.getObjectValue(data, exJhiVal)}
+      ${oHC.getObjectValue(jhiData, exJhiVal)}
   </div>`;
 }
-function genPageHeaderButtons(compareHtml){
+function genPageHeaderButtons(compareHtml,showFilter){
     let buttonDiv = htmlExtractTool.extractHtmlTag2(compareHtml,'div','class="col-.*? text-right')
+    let buttonsHtml = ` <button class="btn-light-blue" (click)="showFilters = !showFilters">
+    {{ showFilters ? 'Hide ' : 'Show ' }} Filters
+    <span class="material-icons text-lg align-middle leading-5 ml-1">filter_alt</span>
+  </button>`;
+    if(!showFilter) buttonsHtml = '';
+    if(!buttonDiv && showFilter) return wrapWithTag(buttonsHtml,'','class="flex justify-end gap-3 items-center p-3"')
+    if(!buttonDiv) return buttonsHtml
     let buttons = htmlExtractTool.extractAllTagWithAttr(buttonDiv,'button');
-    let buttonsHtml = ``;
     for(let button of buttons){
         button = htmlExtractTool.removeAttribute(button, 'class');
         button = htmlExtractTool.addAttribute(button,'class="btn-dark-blue"')
         buttonsHtml+=button;
     }
-    let wrapButton  = wrapWithTag(buttonsHtml,'flex gap-3')
+    let wrapButton  = wrapWithTag(buttonsHtml,'','class="flex justify-end gap-3 items-center p-3"')
     return wrapButton
 }
 // wrapWithTag("w-full",value)
@@ -199,6 +206,7 @@ function indentAllLines(text,noOfIndentations=1){
 }
 function generateSearchForm(compareHtml){
     let formTag = htmlExtractTool.extractHtmlTag(compareHtml, "form", "searchForm");
+    if(!formTag) return '';
     let divs = htmlExtractTool.extractAllTagWithAttr(formTag, "div", "col-2");
     let attrArr=[];
     let html = ``
@@ -218,7 +226,7 @@ function generateSearchForm(compareHtml){
 }
 function genTheadRow(jhi){
     let attrVal = htmlExtractTool.extractAttributeValue(jhi);
-    return indentAllLines(`<th ${jhi}>${oHC.getObjectValue(data,attrVal)}</th>\n`)
+    return indentAllLines(`<th ${jhi}>${oHC.getObjectValue(jhiData,attrVal)}</th>\n`)
 }
 function genThRows(compareHtml){
     let table = htmlExtractTool.extractHtmlTag(compareHtml, "table");
@@ -227,11 +235,18 @@ function genThRows(compareHtml){
     let html =``
     for(let thRow of thRows){
         let jhi = htmlExtractTool.extractAttribute(thRow,'jhiTranslate');
+        let ngIf = htmlExtractTool.extractAttribute(thRow,'\\*ngIf')
         if(jhi){
-            html+= genTheadRow(jhi);
+            let eachRow = genTheadRow(jhi)
+            if(ngIf){
+             htmlExtractTool.addAttribute(thRow,ngIf)   
+            }
+            html+= eachRow;
+        }else{
+            html+=thRow;
         }
     }
-    html+=`\t<th>Actions</th>`
+    // html+=`\t<th>Actions</th>`
     html = wrapWithTag(html,'','','tr')
     html = wrapWithTag(html,'','','thead')
     return html;
@@ -240,25 +255,26 @@ function cleanSpanButton(html){
     let span =htmlExtractTool.extractHtmlTag(html,'span')
     if(!span) return html
     let jhi = htmlExtractTool.extractAttribute(span,'jhiTranslate');
+    let authority = htmlExtractTool.extractAttribute(span,'\\*jhiHasAnyAuthority')
     let jhiVal = htmlExtractTool.extractAttributeValue(jhi);
     let repl = htmlExtractTool.replaceWithErrorHandle(html,'',"",span);
-    repl = htmlExtractTool.replaceValueOfTag(repl,oHC.getObjectValue(data,jhiVal));
+    repl = htmlExtractTool.replaceValueOfTag(repl,oHC.getObjectValue(jhiData,jhiVal));
+    if(authority) repl= htmlExtractTool.addAttribute(repl,authority);
     return htmlExtractTool.addAttribute(repl,jhi)+'\n';
 }
 function genTbRows(compareHtml){
     let table = htmlExtractTool.extractHtmlTag(compareHtml, "table");
     let tbody = htmlExtractTool.extractHtmlTag(table, "tbody");
     let ngIfNoRes = htmlExtractTool.matchWithErrorHandle(tbody,'<tr[\\n\\s.]*?\\*ngIf="![.\\s\\S\\n]*?</tr>')
-    console.log(ngIfNoRes)
     let ngif= htmlExtractTool.extractAttribute(ngIfNoRes,'\\*ngIf')
     let tr = htmlExtractTool.extractHtmlTag(tbody, "tr","\\*ngFor=");
     let ngFor = htmlExtractTool.extractAttribute(tr,'\\*ngFor')
+    let click = htmlExtractTool.extractAttribute(tr,'\\(click\\)')
     let tdRows = htmlExtractTool.extractAllTagWithAttr(tr, "td");
     // console.log(thRows)
     let html =``
     let noResHtml = ``
     for(let tdRow of tdRows){
-        console.log(tdRow)
         if(htmlExtractTool.isPresent(tdRow,'<div[.\\n\\S\\s]*?<button')){
             let buttons  = htmlExtractTool.extractAllTagWithAttr(tdRow,'button')
             let buttonsHtml  = ``;
@@ -285,7 +301,11 @@ function genTbRows(compareHtml){
         //     html+= genTheadRow(jhi);
         // }
     }
-    html = wrapWithTag(html,'',ngFor,'tr')
+    if(click){
+        html = wrapWithTag(html,'',ngFor+''+click,'tr')
+    }else{
+        html = wrapWithTag(html,'',ngFor,'tr')
+    }
     if(noResHtml){
         html+=noResHtml;
     }
@@ -304,16 +324,20 @@ function generateTableWithPag(compareHtml){
 
 }
 function genPage(compareHtml){
+    let html=``;
     let firstH6 = htmlExtractTool.extractHtmlTag(compareHtml, "h6")
     let jhi = htmlExtractTool.extractAttribute(firstH6,'jhiTranslate');
     let header = genPageHeader(jhi)
-    let html =  generateSearchForm(compareHtml)
-    html = addSrchNClrButtons(html);
-    html+=genPageHeaderButtons(compareHtml);
-    html = indentAllLines(html);
-    html = wrapWithTag(html,"flex flex-wrap items-center p-3 gap-4 border-t")
+    let sf = generateSearchForm(compareHtml);
+    if(sf!=='') { 
+        html +=  sf;
+        html = addSrchNClrButtons(html); 
+        html = indentAllLines(html);
+        html = wrapWithTag(html,'',"class='flex flex-wrap items-center p-3 gap-4 border-t' *ngIf='showFilters'")
+    }
     html += `\n<jhi-alert></jhi-alert>\n`
     html+= generateTableWithPag(compareHtml);
+    html=genPageHeaderButtons(compareHtml,true)+html;
     html = `<!---HEAD-->\n`+html;
     html = wrapWithTag(html,"page-body")
     html = header+'\n'+html;
@@ -390,8 +414,39 @@ function generateEntireListPageHtml(htmlText) {
   let html = ``;
   return html;
 }
-
-let setUpUI = new SetupUI(genPage);
+function warnUser(regex,input,output,name){
+    try{
+        let inputCounts = htmlExtractTool.getMatchCounts(input,regex);
+        let outputCounts = htmlExtractTool.getMatchCounts(output,regex);6
+        if(regex.includes('jhiTranslate')){
+            inputCounts-=7
+        }
+        if(inputCounts !== outputCounts){
+            console.error(`Input ${name} input count has ${inputCounts} and output count has ${outputCounts}`)
+        }else{
+            console.info(name+" is fine",inputCounts,outputCounts)
+        }
+    }catch(e){
+        console.warn(name+"skipped due to error",e)
+    }
+}
+function compare(input,output){
+    warnUser('jhiTranslate="',input,output,'JHI Translate')
+    warnUser('\\*jhiHasAnyAuthority',input,output,'JHI Has authority')
+    warnUser('\\*ngIf',input+"*ngIf",output,'Ng If')
+    warnUser('\\*ngFor',input,output,'Ng For')
+    warnUser('\\[routerLink\\]',input,output,'Router link')
+    warnUser('\\(click\\)',input,output,'Click')
+    warnUser('\\[\\(ngModel\\)\\]',input,output+'[(ngModel)]','Ng model')
+    warnUser('formControl',input,output,'Form control')
+    
+}
+function analyzeResults(input){
+    let pageHtml = genPage(input);
+    compare(input,pageHtml)
+    return htmlFormatter.formatHTML(pageHtml.trim());
+}
+let setUpUI = new SetupUI(analyzeResults);
 
 
 //   if(type === 'i'){

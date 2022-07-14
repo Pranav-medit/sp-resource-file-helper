@@ -42,6 +42,13 @@ class HtmlTool{
       console.warn(e);
     }
   }
+  matchAll(str,regex){
+    let match =str.match(new RegExp(regex,'g'));
+    return match;
+  }
+  getMatchCounts(str,regex){
+    return this.matchAll(str,regex).length;
+  }
   replaceWithErrorHandle(str,regStr,repVal,text=false){
     try{
       if(text){ return str.replace(text,repVal).trim() }
@@ -113,5 +120,56 @@ class HtmlTool{
   replaceValueOfTag(html,value){
     let regex = `(?<=<${this.any}>)${this.any}(?=</${this.any}>)`
     return this.replaceWithErrorHandle(html,regex,value)
+  }
+}
+class HtmlFormatter{
+  formatHTML(html,newLineNum=1,tabNum=1) {
+    let indent = '\n'.repeat(newLineNum);
+    let tab = '\t'.repeat(tabNum);
+    let i = 0;
+    let pre = [];
+    html = html.replace(/[\n\t]/g,'')
+    html = html
+        .replace(new RegExp('<pre>((.|\\t|\\n|\\r)+)?</pre>'), function (x) {
+            pre.push({ indent: '', tag: x });
+            return '<--TEMPPRE' + i++ + '/-->'
+        })
+        .replace(new RegExp('<([^<>]+|ngIf=\\s*?["\'].*?[<>].*?["\'])>[^<]?', 'g'), function (x) {
+            let ret;
+            let tag = /<\/?([^\s/>]+)/.exec(x)[1];
+            let p = new RegExp('<--TEMPPRE(\\d+)/-->').exec(x);
+
+            if (p) 
+                pre[p[1]].indent = indent;
+
+            if (['area', 'base', 'br', 'col', 'command', 'embed', 'hr', 'img', 'input', 'keygen', 'link', 'menuitem', 'meta', 'param', 'source', 'track', 'wbr'].indexOf(tag) >= 0) // self closing tag
+                ret = indent + x;
+            else {
+                if(x.indexOf('<!--')!= -1){
+                    // For comment
+                    ret = indent + x
+                }else if (x.indexOf('</') < 0) { //open tag
+                    if (x.charAt(x.length - 1) !== '>')
+                        ret = indent + x.substr(0, x.length - 1) + indent + tab + x.substr(x.length - 1, x.length);
+                    else 
+                        ret = indent + x;
+                    !p && (indent += tab);
+                }
+                else {//close tag
+                    indent = indent.substr(0, indent.length - 1);
+                    if (x.charAt(x.length - 1) !== '>')
+                        ret =  indent + x.substr(0, x.length - 1) + indent + x.substr(x.length - 1, x.length);
+                    else
+                        ret = indent + x;
+                }
+            }
+            return ret;
+        });
+
+    for (i = pre.length; i--;) {
+        html = html.replace('<--TEMPPRE' + i + '/-->', pre[i].tag.replace('<pre>', '<pre>\n').replace('</pre>', pre[i].indent + '</pre>'));
+    }
+
+    return html.charAt(0) === '\n' ? html.substr(1, html.length - 1) : html;
   }
 }

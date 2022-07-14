@@ -1,0 +1,163 @@
+<div class="layout" *ngIf="dataIsAvailable">
+  <div class="field">
+    <label class="label" jhiTranslate="encoreclientApp.profile.caste">Caste</label>
+    <input type="text" class="input" name="caste" #caste="ngModel" [invalid]="caste.invalid" [(ngModel)]="profile.demography.caste" />
+  </div>
+  <div class="field">
+    <label class="label" jhiTranslate="encoreclientApp.profile.religion">religion</label>
+    <input type="text" class="input" name="religion" #religion="ngModel" [invalid]="religion.invalid" [(ngModel)]="profile.demography.religion" />
+  </div>
+  <div class="field">
+    <label class="label" jhiTranslate="encoreclientApp.profile.nationality">nationality</label>
+    <input type="text" class="input" name="nationality" #nationality="ngModel" [invalid]="nationality.invalid" [(ngModel)]="profile.demography.nationality" />
+  </div>
+  <div class="field">
+    <label class="label" jhiTranslate="encoreclientApp.profile.occupation">occupation</label>
+    <select class="input" name="occupation" #occupation="ngModel" [invalid]="occupation.invalid" [(ngModel)]="profile.demography.occupation">
+      <option selected [ngValue]="defaultValue">Select an option</option>
+      <option *ngFor="let occupation of occupationList" [value]="occupation.code">
+        {{ occupation.name }}
+      </option>
+    </select>
+  </div>
+  <div class="field">
+    <label class="label" jhiTranslate="encoreclientApp.profile.employment">employment</label>
+    <select class="input" name="employment" #employment="ngModel" [invalid]="employment.invalid" [(ngModel)]="profile.demography.employment">
+      <option selected [ngValue]="defaultValue">Select an option</option>
+      <option *ngFor="let employment of employmentList" [value]="employment.code">
+        {{ employment.name }}
+      </option>
+    </select>
+  </div>
+  <div class="field">
+    <label class="label" jhiTranslate="encoreclientApp.profile.education">education</label>
+    <select class="input" name="education" #education="ngModel" [invalid]="education.invalid" [(ngModel)]="profile.demography.education">
+      <option selected [ngValue]="defaultValue">Select an option</option>
+      <option *ngFor="let education of educationList" [value]="education.code">
+        {{ education.name }}
+      </option>
+    </select>
+  </div>
+  <div class="field">
+    <label class="label" jhiTranslate="encoreclientApp.profile.language1">language1</label>
+    <select class="input" name="language1" #language1="ngModel" [invalid]="language1.invalid" [(ngModel)]="profile.demography.language1">
+      <option selected [ngValue]="defaultValue">Select an option</option>
+      <option *ngFor="let language of languageList" [value]="language.code">
+        {{ language.name }}
+      </option>
+    </select>
+  </div>
+  <div class="field">
+    <label class="label" jhiTranslate="encoreclientApp.profile.languageProficiency1">languageProficiency1</label>
+    <select
+      class="input"
+      name="languageProficiency1"
+      #languageProficiency1="ngModel"
+      [invalid]="languageProficiency1.invaid"
+      [(ngModel)]="profile.demography.languageProficiency1"
+    >
+      <option selected [ngValue]="defaultValue">Select an option</option>
+      <option *ngFor="let languageProficiency of languageProficiencyList" [value]="languageProficiency.code">
+        {{ languageProficiency.name }}
+      </option>
+    </select>
+  </div>
+  <div class="blank"></div>
+  <div class="field">
+    <label class="label" jhiTranslate="encoreclientApp.profile.language2">language2</label>
+    <select class="input" name="language2" #language2="ngModel" [invalid]="language2.invalid" [(ngModel)]="profile.demography.language2">
+      <option selected [ngValue]="defaultValue">Select an option</option>
+      <option *ngFor="let language of languageList" [value]="language.code">
+        {{ language.name }}
+      </option>
+    </select>
+  </div>
+  <div class="field">
+    <label class="label" jhiTranslate="encoreclientApp.profile.languageProficiency2">languageProficiency2</label>
+    <select
+      class="input"
+      name="languageProficiency2"
+      #languageProficiency2="ngModel"
+      [invalid]="languageProficiency2.invalid"
+      [(ngModel)]="profile.demography.languageProficiency2"
+    >
+      <option selected [ngValue]="defaultValue">Select an option</option>
+      <option *ngFor="let languageProficiency of languageProficiencyList" [value]="languageProficiency.code">
+        {{ languageProficiency.name }}
+      </option>
+    </select>
+  </div>
+  <div class="blank"></div>
+  <div class="field">
+    <label class="label" jhiTranslate="encoreclientApp.profile.language3">language3</label>
+    <select class="input" name="language3" #language3="ngModel" [invalid]="language3.invalid" [(ngModel)]="profile.demography.language3">
+      <option selected [ngValue]="defaultValue">Select an option</option>
+      <option *ngFor="let language of languageList" [value]="language.code">
+        {{ language.name }}
+      </option>
+    </select>
+  </div>
+  <div class="field">
+    <label class="label" jhiTranslate="encoreclientApp.profile.languageProficiency3">languageProficiency3</label>
+    <select
+      class="input"
+      name="languageProficiency3"
+      #languageProficiency3="ngModel"
+      [invalid]="languageProficiency3.invalid"
+      [(ngModel)]="profile.demography.languageProficiency3"
+    >
+      <option selected [ngValue]="defaultValue">Select an option</option>
+      <option *ngFor="let languageProficiency of languageProficiencyList" [value]="languageProficiency.code">
+        {{ languageProficiency.name }}
+      </option>
+    </select>
+  </div>
+  <div class="blank"></div>
+  <div class="field">
+    <label class="label" jhiTranslate="encoreclientApp.profile.annualIncome">annualIncome</label>
+    <input
+      type="text"
+      class="input"
+      name="annualIncome"
+      #annualIncome="ngModel"
+      [invalid]="annualIncome.invalid"
+      [(ngModel)]="profile.demography.annualIncome"
+    />
+  </div>
+  <div class="field">
+    <label class="label" jhiTranslate="encoreclientApp.profile.segment">segment</label>
+    <select class="input" name="segment" #segment="ngModel" [invalid]="segment.invalid" [(ngModel)]="profile.demography.segment">
+      <option selected [ngValue]="defaultValue">Select an option</option>
+      <option *ngFor="let segment of segmentList" [value]="segment.code">
+        {{ segment.name }}
+      </option>
+    </select>
+  </div>
+  <div class="field">
+    <label class="label" jhiTranslate="encoreclientApp.profile.residenceType">residenceType</label>
+    <select class="input" name="residenceType" #residenceType="ngModel" [invalid]="residenceType.invalid" [(ngModel)]="profile.demography.residenceType">
+      <option selected [ngValue]="defaultValue">Select an option</option>
+      <option *ngFor="let residenceType of residenceTypeList" [value]="residenceType.code">
+        {{ residenceType.name }}
+      </option>
+    </select>
+  </div>
+  <div class="field">
+    <label class="label" jhiTranslate="encoreclientApp.profile.sector">sector</label>
+    <select class="input" name="sector" #sector="ngModel" [invalid]="sector.invalid" [(ngModel)]="profile.demography.sector">
+      <option selected [ngValue]="defaultValue">Select an option</option>
+      <option *ngFor="let sector of sectorList" [value]="sector.code">
+        {{ sector.name }}
+      </option>
+    </select>
+  </div>
+  <div class="field">
+    <label class="label" jhiTranslate="encoreclientApp.profile.domicileStatus">domicileStatus</label>
+    <select class="input" name="domicileStatusCode" #domicileStatusCode="ngModel" [invalid]="domicileStatusCode.invalid" [(ngModel)]="profile.domicileStatus">
+      <option selected [ngValue]="defaultValue">Select an option</option>
+      <option *ngFor="let domicileStatus of domicileStatusList" [value]="domicileStatus.code">
+        {{ domicileStatus.name }}
+      </option>
+    </select>
+  </div>
+</div>
