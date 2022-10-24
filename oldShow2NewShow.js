@@ -996,6 +996,13 @@ let compareHtml =`<div *ngIf="profile" class="card-body">
     <span jhiTranslate="entity.action.edit">Edit</span>
 </button>
 </div>`
+
+const setUpUI = new SetupUI(generateEntireShowPageHtml);
+setUpUI.changeTitles('Old 2 new Show page','N/A');
+const hET = new HtmlTool();
+const sH = new StringHelper();
+const oHC  = new ObjectHelperClass();
+const hF = new HtmlFormatter();
 function wrapWithHeaderHtml(html,dto,page=false,baseJhi=false) {
     if(!baseJhi){
         baseJhi = extractDto(html)
@@ -1018,6 +1025,21 @@ function wrapWithHeaderHtml(html,dto,page=false,baseJhi=false) {
     `+html+'\n</div>';
 }
 
+function wrapWithHeaderHtml2(html,jhi,page) {
+  return `
+  <div class="bg-white shadow-sm rounded h-full relative" >\n
+  <!--Head-->\n
+  <div class="flex gap-3 items-center p-3">
+    <div class="modal-title" ${jhi}>${page} Details</div>
+    <button class="btn-dark-blue ml-auto" jhiTranslate="entity.action.edit">Edit ${page}</button>
+    <button class="btn-icon-blue" (click)="previousState()">
+      <span class="material-icons">close</span>
+    </button>
+  </div>
+  
+  <jhi-alert></jhi-alert>
+    `+html+'\n</div>';
+}
 
 function isPresent(string,reg){
   return string.match(new RegExp(reg)) ? true : false; 
@@ -1184,58 +1206,15 @@ function generateShowPageMainBody(htmlText){
     }
     return showPageMainBodyHtml;
 }
+function dtoExtractorFromDetailDto(str){
+    return str.split('.').slice(-3,-2).join('');
+}
 function generateEntireShowPageHtml(htmlText){
     let html =``;
     html = generateShowPageMainBody(htmlText);
-    html = wrapWithHeaderHtml(html,"Associates");
+    let  h6 = hET.extractHtmlTag2(htmlText,'h6').trim();
+    let jhiVal = hET.extractAttributeValue( hET.extractAttribute(h6,'jhiTranslate'));
+    html = wrapWithHeaderHtml2(html,hET.extractAttribute(h6,'jhiTranslate'),
+        seperateCharectersUponUppercase(dtoExtractorFromDetailDto(jhiVal),true));
     return html;
 }
-function setupUI(){
-  let inputArea= document.getElementsByClassName('textarea')[0];
-  let outputArea = document.getElementsByClassName('textarea')[1];
-  let copyButton = document.getElementById('copy');
-  let convertButton = document.getElementById('convert');
-  let pasteButton = document.getElementById('paste');
-  let prettifyButton = document.getElementById('pretty');
-  let isFlatCheckbox = document.getElementById('isFlatCheckbox');
-  let title = document.getElementById('title');
-  let checkLabel = document.getElementById('check-label');
-  function copyFromElem(element){
-    // console.log(element)
-    navigator.clipboard.writeText(element.value);
-  }
-  function paste2Elem(element){
-    element.value='';
-    navigator.clipboard.readText().then((text)=>{
-      element.value = text;
-    });
-  }
-  function prettifyButtonHandler(...args){
-    let space = 2
-    args.forEach(elem => {
-      elem.value = elem.value.replaceAll(/\\n/g,String.fromCharCode(10));
-      elem.value = elem.value.replaceAll(/\\t/g,String.fromCharCode(9));
-    })
-  }
-  function convertButtonHandler(inputArea,outputArea){
-    outputArea.value='';
-    setTimeout(()=>{
-        console.log(generateEntireShowPageHtml(inputArea.value))
-        outputArea.value = generateEntireShowPageHtml(inputArea.value)
-    },100)
-  }
-
-  // Add listeners
-  copyButton.addEventListener('click', event => copyFromElem(outputArea));
-  prettifyButton.addEventListener('click', event => prettifyButtonHandler(inputArea,outputArea));
-  pasteButton.addEventListener('click',(event)=> paste2Elem(inputArea));
-  convertButton.addEventListener('click', (event)=>convertButtonHandler(inputArea,outputArea));
-
-  // Set Titles
-  checkLabel.innerText = "NA"
-  title.innerText = `Old to new show page`
-}
-function main(){
-  setupUI();
-}
-main()

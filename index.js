@@ -1,4 +1,119 @@
 const modelFileStr = `
+@Secured("ROLE_ListCustomerFiles")
+    @RequestMapping(value = "/listCustomerFiles/{customerId}", produces = "text/html")
+    public String listLoanFiles(@PathVariable("customerId") String customerId, Model uiModel, Locale locale, RedirectAttributes redirectAttributes) throws ProgramException {
+		List<DocumentLinkDto> documentLinks = fileManagerService.findDocumentLinks(DocumentEntityType.CUSTOMER, customerId);
+        uiModel.addAttribute("documentLinks", documentLinks);
+        uiModel.addAttribute("customerId", customerId);
+        WebUtils.addDateTimeFormatPatterns(uiModel);
+        return "customers/customer/profile/customerFiles/list";
+    }
+    @Secured("ROLE_ListCustomerFiles")
+	@RequestMapping(value = "/customerFiles/download/{entityType}/{entityId}/{name}", produces = "text/html")
+    public String downloadCustomerFiles(@PathVariable("entityType") String entityTypeStr, @PathVariable("entityId") String accountId, @PathVariable("name") String name, HttpServletResponse response) throws Exception{
+    	DocumentEntityType entityType = EnumUtils.getEnum(DocumentEntityType.class, entityTypeStr);
+		DocumentLinkDto documentLinkDto = fileManagerService.findDocumentLink(entityType, accountId, name);
+		String fullFileName= documentLinkDto.getPath();
+		String fileName = fullFileName.substring(fullFileName.lastIndexOf(File.separator)+1);
+		response.setHeader("Content-Type", "application/octet-stream");
+		response.setHeader("Content-Disposition", "attachment;filename=\"" + fileName + "\"");
+		try (BufferedInputStream logFileStream = new BufferedInputStream(new FileInputStream(fullFileName)); ServletOutputStream outputStream = response.getOutputStream()){
+			byte []readBytes = new byte[1024];
+			int numberOfBytesRead;
+			while((numberOfBytesRead = logFileStream.read(readBytes)) != -1)
+				outputStream.write(readBytes, 0, numberOfBytesRead);
+		}
+		return null;
+	}
+	@Secured("ROLE_CreateCustomerFiles")
+	@RequestMapping(value = "/createCustomerFile/{accountId}", produces = "text/html")
+	public String createCustomerFileForm(@PathVariable("accountId") String accountId, Model uiModel, Locale locale, RedirectAttributes redirectAttributes) {
+		DocumentLinkDto documentLink = new DocumentLinkDto();
+		documentLink.setEntityType(DocumentEntityType.CUSTOMER);
+		documentLink.setEntityId(accountId);
+		uiModel.addAttribute("documentLink", documentLink);
+		WebUtils.addDateTimeFormatPatterns(uiModel);
+		return "customers/customer/profile/customerFiles/create";
+	}
+	@Secured("ROLE_CreateCustomerFiles")
+	@RequestMapping(value = "/createCustomerFile", method = RequestMethod.POST, produces = "text/html")
+	public String createCustomerFile(@Valid DocumentLinkDto documentLink, BindingResult bindingResult,
+			Model uiModel, DefaultMultipartHttpServletRequest httpServletRequest, Locale locale, RedirectAttributes redirectAttributes) {
+		uiModel.asMap().clear();
+		try {
+			LocalDate currentWorkingDate = bankService.findBank().getCurrentWorkingDate();
+    		FileLocator fileLocator = new FileLocator();
+    		CommonsMultipartFile fileData = (CommonsMultipartFile) httpServletRequest.getFile("file");
+    		if (fileData == null || fileData.isEmpty()) {
+        		uiModel.addAttribute("documentLink", documentLink);
+            	uiModel.addAttribute(WebUtils.UPLOAD_MESSAGE_CODE, messageSource.getMessage("label_document_file_data_not_provided", new String[] { documentLink.getName() }, locale));
+                return "customers/customer/profile/customerFiles/create";
+            }
+			String fullFileName = fileLocator.copyDocument(UUID.randomUUID().toString(), fileData);
+			documentLink.setCreationDate(currentWorkingDate);
+			documentLink.setPath(fullFileName);
+			fileManagerService.store(documentLink);
+			documentLink = fileManagerService.findDocumentLinkById(documentLink.getId());
+			redirectAttributes.addFlashAttribute(WebUtils.SUCCESS_MESSAGE, messageSource.getMessage("label_document_link_saved_successfully", new String[] { documentLink.getName() }, locale));
+            return "redirect:/customers/customer/profile/listCustomerFiles/" + WebUtils.encodeUrlPathSegment(documentLink.getEntityId(), httpServletRequest);
+		} catch (ProgramException e) {
+        	uiModel.addAttribute(WebUtils.UPLOAD_MESSAGE_CODE, messageSource.getMessage("label_document_link_error", new String[] { documentLink.getName() }, locale));
+    		uiModel.addAttribute("documentLink", documentLink);
+    		log.error("Error in saving document", e);
+    		WebUtils.addDateTimeFormatPatterns(uiModel);
+			return "customers/customer/profile/customerFiles/create";
+		}
+	}
+	@Secured("ROLE_UpdateCustomerFiles")
+	@RequestMapping(value = "/customerFiles/{id}", params = "form", produces = "text/html")
+	public String updateCustomerFileForm(@PathVariable("id") Long id, Model uiModel) {
+		DocumentLinkDto documentLink = fileManagerService.findDocumentLinkById(id);
+		uiModel.addAttribute("documentLink", documentLink);
+        WebUtils.addDateTimeFormatPatterns(uiModel);
+		return "customers/customer/profile/customerFiles/update";
+	}
+	@Secured("ROLE_UpdateCustomerFiles")
+	@RequestMapping(value = "/updateCustomerFile", method = RequestMethod.POST, produces = "text/html")
+	public String updateCustomerFile(@Valid DocumentLinkDto documentLink, BindingResult bindingResult,
+			Model uiModel, DefaultMultipartHttpServletRequest httpServletRequest, Locale locale, RedirectAttributes redirectAttributes) {
+		uiModel.asMap().clear();
+		try {
+			LocalDate currentWorkingDate = bankService.findBank().getCurrentWorkingDate();
+    		FileLocator fileLocator = new FileLocator();
+    		CommonsMultipartFile fileData = (CommonsMultipartFile) httpServletRequest.getFile("file");
+    		if (fileData == null || fileData.isEmpty()) {
+        		uiModel.addAttribute("documentLink", documentLink);
+            	uiModel.addAttribute(WebUtils.UPLOAD_MESSAGE_CODE, messageSource.getMessage("label_document_file_data_not_provided", new String[] { documentLink.getName() }, locale));
+                return "customers/customer/profile/customerFiles/update";
+            }
+			String fullFileName = fileLocator.copyDocument(UUID.randomUUID().toString(), fileData);
+			documentLink.setCreationDate(currentWorkingDate);
+			documentLink.setPath(fullFileName);
+			fileManagerService.store(documentLink);
+			documentLink = fileManagerService.findDocumentLinkById(documentLink.getId());
+			redirectAttributes.addFlashAttribute(WebUtils.SUCCESS_MESSAGE, messageSource.getMessage("label_document_link_saved_successfully", new String[] { documentLink.getName() }, locale));
+            return "redirect:/customers/customer/profile/listCustomerFiles/" + WebUtils.encodeUrlPathSegment(documentLink.getEntityId(), httpServletRequest);
+		} catch (ProgramException e) {
+        	uiModel.addAttribute(WebUtils.UPLOAD_MESSAGE_CODE, messageSource.getMessage("label_document_link_error", new String[] { documentLink.getName() }, locale));
+    		uiModel.addAttribute("documentLink", documentLink);
+    		log.error("Error in saving document", e);
+    		WebUtils.addDateTimeFormatPatterns(uiModel);
+			return "customers/customer/profile/customerFiles/update";
+		}
+	}
+    @Secured("ROLE_DeleteCustomerFiles")
+    @RequestMapping(value = "/customerFiles/{id}", method = RequestMethod.DELETE, produces = "text/html")
+    public String deleteCustomerFile(@PathVariable("id") Long id, @RequestParam(value = "page", required = false) Integer page, @RequestParam(value = "size", required = false) Integer size, 
+            Model uiModel, HttpServletRequest httpServletRequest) throws ProgramException {
+		DocumentLinkDto documentLink = fileManagerService.findDocumentLinkById(id);
+		fileManagerService.remove(documentLink);
+//		FileLocator fileLocator = new FileLocator();
+//		fileLocator.deleteFile(documentLink.getPath());
+        uiModel.asMap().clear();
+        uiModel.addAttribute("page", (page == null) ? "1" : page.toString());
+        uiModel.addAttribute("size", (size == null) ? "10" : size.toString());
+        return "redirect:/customers/customer/profile/listCustomerFiles/" + WebUtils.encodeUrlPathSegment(documentLink.getEntityId(), httpServletRequest);
+    }
 `;
 function StepExtractor(text, step, isStr = true) {
   return isStr ? text.match(step).join(" ") : text.match(step);

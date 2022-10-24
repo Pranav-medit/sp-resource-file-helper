@@ -9,6 +9,7 @@ class SetupUI{
     this.isFlatCheckbox = document.getElementById('isFlatCheckbox');
     this.title = document.getElementById('title');
     this.checkLabel = document.getElementById('check-label');
+    if(this.getInputCache() && this.getInputCache!==undefined) this.inputArea.innerText = this.getInputCache();
   }
   addEventListeners(fn2Call){
     this.copyButton.addEventListener('click', event => this.copyFromElem(this.outputArea));
@@ -16,10 +17,19 @@ class SetupUI{
     this.pasteButton.addEventListener('click',(event)=> this.paste2Elem(this.inputArea));
     this.convertButton.addEventListener('click', (event)=>this.convertButtonHandler(fn2Call));
   }
-  changeTitles(){
+  changeTitles(titleText='',checkLabel=''){
      // Set Titles
-     this.checkLabel.innerText = "NA"
-     this.title.innerText = `Old to new show page`
+     if(document.readyState === "complete") {
+      // Fully loaded!
+      this.checkLabel.innerText = checkLabel
+      this.title.innerText = titleText
+    }else{
+      window.addEventListener("load", () => {
+        // DOM ready! Images, frames, and other subresources are still downloading.
+        this.checkLabel.innerText = checkLabel
+        this.title.innerText = titleText
+    });
+    }
   }
   constructor(fn2Call){
     // Add listeners
@@ -47,9 +57,21 @@ class SetupUI{
     })
   }
   convertButtonHandler(fn2Call){
+    this.setInputCache(this.inputArea.value); 
     this.outputArea.value='';
     setTimeout(()=>{
         this.outputArea.value = fn2Call(this.inputArea.value)
     },100)
+  }
+  setInputCache(val){
+    try{
+      localStorage.setItem('prev_input',val);
+      return true;
+    }catch(e){
+      return false;
+    }
+  }
+  getInputCache(){
+    return localStorage.getItem('prev_input');
   }
 }

@@ -162,7 +162,6 @@ let sH = new StringHelper();
 const oHC  = new ObjectHelperClass();
 const htmlFormatter = new HtmlFormatter();
 
-
 function wrapWithTag(value="",_class="",eAttr="",tag="div"){
   let nl ='\n'
   if(eAttr === "" && _class!=="") return `<${tag} class="${_class}" ${eAttr}>\n\t${value}\n</${tag}>`
@@ -188,9 +187,28 @@ function genPageHeaderButtons(compareHtml,showFilter){
     for(let button of buttons){
         button = htmlExtractTool.removeAttribute(button, 'class');
         button = htmlExtractTool.addAttribute(button,'class="btn-dark-blue"')
+        button = cleanSpanButton(button);
         buttonsHtml+=button;
     }
     let wrapButton  = wrapWithTag(buttonsHtml,'','class="flex justify-end gap-3 items-center p-3"')
+    return wrapButton
+}
+function genPageHeaderButtons2(compareHtml,showFilter){
+    let buttonDiv = htmlExtractTool.extractHtmlTag2(compareHtml,'div','class="col-.*? text-right')
+    let buttonsHtml = ``;
+    if(!buttonDiv) return buttonsHtml
+    let buttons = htmlExtractTool.extractAllTagWithAttr(buttonDiv,'button');
+    buttons.forEach((button,index)=>{
+        button = htmlExtractTool.removeAttribute(button, 'class');
+        if(index === 0){
+            button = htmlExtractTool.addAttribute(button,'class="btn-light-blue"')
+        }else{
+            button = htmlExtractTool.addAttribute(button,'class="btn-dark-blue"')
+        }
+        button = cleanSpanButton(button);
+        buttonsHtml+=button;
+    })
+    let wrapButton  = wrapWithTag(buttonsHtml,'','class="flex gap-3"')
     return wrapButton
 }
 // wrapWithTag("w-full",value)
@@ -204,7 +222,10 @@ function genPageHeaderButtons(compareHtml,showFilter){
 function indentAllLines(text,noOfIndentations=1){
     return text.replaceAll(/^/gm,'\t'.repeat(noOfIndentations))
 }
+
 function generateSearchForm(compareHtml){
+    selectCount = 0;
+    inputCount = 0;
     let formTag = htmlExtractTool.extractHtmlTag(compareHtml, "form", "searchForm");
     if(!formTag) return '';
     let divs = htmlExtractTool.extractAllTagWithAttr(formTag, "div", "col-2");
@@ -215,9 +236,11 @@ function generateSearchForm(compareHtml){
       let select = htmlExtractTool.extractHtmlTag(div,"select")
       if(!input && !select) continue;
       else if(input)  {
+        inputCount++;
          html+= handleInput(input,'i')
       }
       else if(select)   {
+        selectCount++;
          html+= handleInput(select,'s')
       }
       else console.warn("something is different",input)
@@ -344,11 +367,60 @@ function genPage(compareHtml){
     html = wrapWithTag(html,'w-full')
     return html.trim();
 }
+function oneLineSearchPage(compareHtml,header,sf){
+    let html=``;
+    if(sf!=='') { 
+        html +=  sf;
+        html = addSrchNClrButtons(html); 
+        html = indentAllLines(html);
+        html = wrapWithTag(html,'',"class='flex w-1/2 gap-2'")
+    }
+    html= html+genPageHeaderButtons2(compareHtml,true);
+    html = wrapWithTag(html,'','class="flex justify-between items-center p-3"')
+    html += `\n<jhi-alert></jhi-alert>\n`
+    html+= generateTableWithPag(compareHtml);
+    html = `<!---HEAD-->\n`+html;
+    html = wrapWithTag(html,"page-body")
+    html = header+'\n'+html;
+    html = wrapWithTag(html,'w-full')
+    return html.trim();
+}
+function showFilterSearchPage(compareHtml,header,sf){
+    let html=``;
+    if(sf!=='') { 
+        html +=  sf;
+        html = addSrchNClrButtons(html); 
+        html = indentAllLines(html);
+        html = wrapWithTag(html,'',"class='flex flex-wrap items-center p-3 gap-4 border-t' *ngIf='showFilters'")
+    }
+    html += `\n<jhi-alert></jhi-alert>\n`
+    html+= generateTableWithPag(compareHtml);
+    html=genPageHeaderButtons(compareHtml,true)+html;
+    html = `<!---HEAD-->\n`+html;
+    html = wrapWithTag(html,"page-body")
+    html = header+'\n'+html;
+    html = wrapWithTag(html,'w-full')
+    return html.trim();
+}
+function genPage2(compareHtml){
+    let html=``;
+    let firstH6 = htmlExtractTool.extractHtmlTag(compareHtml, "h6")
+    let jhi = htmlExtractTool.extractAttribute(firstH6,'jhiTranslate');
+    let header = genPageHeader(jhi)
+    let sf = generateSearchForm(compareHtml);
+    let counts = inputCount+selectCount;
+    if(counts>4){
+        html =showFilterSearchPage(compareHtml,header,sf);
+    }else{
+        html = oneLineSearchPage(compareHtml,header,sf);
+    }
+    return html;
+}
 // console.log(genPage(compareHtml).trim());
 
 function getLastNgIf(html){
     let regexp  =new RegExp(`\\*ngIf=".*?"(?=[.\\s\\n]*?style="background-color: #f8f9fa;")`)
-    let ngif = htmlExtractTool.extractAttribute(html.match(regexp)[0],'\\*ngIf')
+    let ngif = htmlExtractTool.extractAttribute(htmlExtractTool.matchWithErrorHandle(html,regexp),'\\*ngIf')
     return ngif;
 }
 // console.log(generateTableWithPag(compareHtml))
@@ -373,9 +445,12 @@ function generatePaginator(ngIf) {
 
 function handleInput(input,type) {
     input = htmlExtractTool.removeAttribute(input,'class');
-
     input = htmlExtractTool.removeAttribute(input,'type');
-    input = htmlExtractTool.addAttribute(input,'type="search"')
+    if(input.toLowerCase().includes('date')){
+        input =  htmlExtractTool.addAttribute(input,'type="date"')
+    } else{
+        input = htmlExtractTool.addAttribute(input,'type="search"')
+    }
     input = wrapWithTag(input,"",`type="search" class="search-box"` )
     return input+'\n';
 }
@@ -442,7 +517,7 @@ function compare(input,output){
     
 }
 function analyzeResults(input){
-    let pageHtml = genPage(input);
+    let pageHtml = genPage2(input);
     compare(input,pageHtml)
     return htmlFormatter.formatHTML(pageHtml.trim());
 }

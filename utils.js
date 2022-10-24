@@ -3,24 +3,36 @@ class StringHelper{
     return strToCapitalize[0].toUpperCase() + strToCapitalize.slice(1);
   }
   seperateCharectersUponUppercase(strInput, firstCap) {
-    if (firstCap) {
-      return this.capitalizeFirstLetter(strInput.split(/(?=[A-Z])/).join(" "));
+    try{
+
+      if (firstCap) {
+        return this.capitalizeFirstLetter(strInput.split(/(?=[A-Z])/).join(" "));
+      }
+      return strInput.split(/(?=[A-Z])/).join(" ");
+    }catch(e){
+      console.error(e);
+      return ''
     }
-    return strInput.split(/(?=[A-Z])/).join(" ");
   }
 }
 class ObjectHelperClass{
   getObjectValue(obj, key) {
-    let arr = key.split(".");
-    let maxIterations = 100;
-    let iterations = 0;
-    let res = obj;
-    while (arr.length !== 0 && iterations < maxIterations) {
-      iterations++;
-      res = res[arr[0]];
-      arr.shift();
+    try{
+
+      let arr = key.split(".");
+      let maxIterations = 100;
+      let iterations = 0;
+      let res = obj;
+      while (arr.length !== 0 && iterations < maxIterations) {
+        iterations++;
+        res = res[arr[0]];
+        arr.shift();
+      }
+      return res;
+    }catch(e){
+      console.warn(`Skipped object ${obj} with key ${key}`);
+      return
     }
-    return res;
   }
 }
 
